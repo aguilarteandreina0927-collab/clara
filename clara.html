@@ -500,9 +500,14 @@ tr:last-child td{border-bottom:none}
       <div id="gd-miembros"></div>
     </div>
     <!-- Gastos -->
-    <div class="card">
+    <div class="card" style="margin-bottom:14px">
       <div class="ct">Gastos del grupo</div>
       <div id="gd-gastos"></div>
+    </div>
+    <!-- Estadísticas del grupo -->
+    <div class="card" id="gd-stats-card">
+      <div class="ct">Estadísticas del grupo</div>
+      <div id="gd-stats"></div>
     </div>
   </div>
 
@@ -1215,7 +1220,9 @@ function cambiarMes(d){
 // ── INICIO ─────────────────────────────────────────
 function renderInicio(){
   const now=new Date();
-  $('inicio-saludo').textContent='Buen día'+(PERFIL.nombre?' '+PERFIL.nombre:'')+' 👋';
+  const hora=new Date().getHours();
+  const saludo=hora<12?'Buenos días':hora<20?'Buenas tardes':'Buenas noches';
+  $('inicio-saludo').textContent=saludo+(PERFIL.nombre?' '+PERFIL.nombre:'')+' 👋';
   $('inicio-fecha').textContent=now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).replace(/^\w/,c=>c.toUpperCase());
   $('h-mes').textContent=MESES[now.getMonth()]+' '+now.getFullYear();
   const mk=mesKey(now.getMonth(),now.getFullYear());
@@ -3424,21 +3431,60 @@ async function renderGrupoDetalle(){
     // Render gastos
     $('gd-gastos').innerHTML=(gastos||[]).length?(gastos||[]).map(gasto=>{
       const pagadorNombre=nombrePorId[gasto.pagado_por]||'?';
-      const miParte=(gasto.division||{})[CURRENT_USER.id]||0;
-      return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:500">${gasto.descripcion}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${gasto.fecha} · Pagó: ${pagadorNombre}</div>
-          ${miParte>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">Tu parte: ${fmt(miParte)}</div>`:''}
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:var(--mono);font-size:13px">${fmt(gasto.monto)}</div>
-          ${gasto.pagado_por===CURRENT_USER.id?`<button onclick="eliminarGastoGrupo(${gasto.id})" style="font-size:10.5px;color:var(--muted);background:none;border:none;cursor:pointer;margin-top:4px">🗑</button>`:''}
+      const div=gasto.division||{};
+      const miParte=div[CURRENT_USER.id]||0;
+      const divTexto=Object.entries(div).map(([uid,m])=>`${nombrePorId[uid]||'?'}: ${fmt(parseFloat(m))}`).join(' · ');
+      return`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1;cursor:pointer" onclick="verDetalleGasto(${gasto.id})">
+            <div style="font-size:13px;font-weight:500">${gasto.descripcion}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${gasto.fecha} · Pagó: ${pagadorNombre}</div>
+            ${miParte>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">Tu parte: ${fmt(miParte)}</div>`:''}
+            <div style="font-size:10.5px;color:var(--muted);margin-top:2px">División: ${divTexto}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
+            <div style="font-family:var(--mono);font-size:13px">${fmt(gasto.monto)}</div>
+            ${gasto.pagado_por===CURRENT_USER.id?`<button onclick="editarGastoGrupo(${JSON.stringify(gasto).replace(/"/g,'&quot;')})" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px">✏️</button>
+            <button onclick="eliminarGastoGrupo(${gasto.id})" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px">🗑</button>`:''}
+          </div>
         </div>
       </div>`;
     }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin gastos todavía. ¡Agregá el primero!</div>';
 
-    // Poblar selector de pagador en modal
+    // Stats del grupo
+    const statsEl=$('gd-stats');
+    if(statsEl&&(gastos||[]).length){
+      const totalGrupo=(gastos||[]).reduce((s,g)=>s+g.monto,0);
+      const porCat={};(gastos||[]).forEach(g=>{porCat[g.cat||'Otros']=(porCat[g.cat||'Otros']||0)+g.monto;});
+      const aportePorPersona={};
+      uids.forEach(uid=>{aportePorPersona[uid]=(gastos||[]).filter(g=>g.pagado_por===uid).reduce((s,g)=>s+g.monto,0);});
+      statsEl.innerHTML=`
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Total gastado: <strong>${fmt(totalGrupo)}</strong></div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Aporte por persona</div>
+          ${uids.map(uid=>{
+            const aporte=aportePorPersona[uid]||0;
+            const pct=totalGrupo>0?Math.round(aporte/totalGrupo*100):0;
+            return`<div style="margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px">
+                <span>${nombrePorId[uid]}${uid===CURRENT_USER.id?' (vos)':''}</span>
+                <span>${fmt(aporte)} · ${pct}%</span>
+              </div>
+              <div class="pb"><div class="pf" style="width:${pct}%;background:var(--green)"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Por categoría</div>
+          ${Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([cat,monto])=>{
+            const pct=totalGrupo>0?Math.round(monto/totalGrupo*100):0;
+            return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--border)">
+              <span>${CATS[cat]||'📦'} ${cat}</span>
+              <span style="font-family:var(--mono)">${fmt(monto)} <span style="color:var(--muted);font-size:10.5px">${pct}%</span></span>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }else if(statsEl){$('gd-stats-card').style.display='none';}
     const sel=$('gg-pagador');
     if(sel){
       sel.innerHTML=(miembros||[]).map(m=>`<option value="${m.user_id}"${m.user_id===CURRENT_USER.id?' selected':''}>${nombrePorId[m.user_id]||'Usuario'}${m.user_id===CURRENT_USER.id?' (vos)':''}</option>`).join('');
@@ -3557,6 +3603,53 @@ async function eliminarGastoGrupo(id){
   renderGrupoDetalle();toast('Gasto eliminado');
 }
 
+function editarGastoGrupo(gasto){
+  if(typeof gasto==='string')gasto=JSON.parse(gasto);
+  $('gg-desc').value=gasto.descripcion||'';
+  $('gg-monto').value=gasto.monto||'';
+  $('gg-fecha').value=gasto.fecha||new Date().toISOString().slice(0,10);
+  $('gg-cat').value=gasto.cat||'Otros';
+  // Store id for update
+  $('gg-desc').dataset.editId=gasto.id;
+  calcDivGrupo();
+  // Set division values
+  setTimeout(()=>{
+    const div=gasto.division||{};
+    document.querySelectorAll('#gg-division input[data-uid]').forEach(inp=>{
+      if(div[inp.dataset.uid]!==undefined)inp.value=div[inp.dataset.uid];
+    });
+  },50);
+  abrir('m-gasto-grupo');
+}
+
+function verDetalleGasto(id){
+  // Already visible inline — just scroll to it
+}
+
+async function guardarGastoGrupo(){
+  const desc=$('gg-desc').value.trim();
+  const monto=parseFloat($('gg-monto').value)||0;
+  const fecha=$('gg-fecha').value;
+  const cat=$('gg-cat').value;
+  const pagadorId=$('gg-pagador').value;
+  const editId=$('gg-desc').dataset.editId;
+  if(!desc||!monto||!fecha){alert('Completá descripción, monto y fecha');return;}
+  const division={};
+  document.querySelectorAll('#gg-division input[data-uid]').forEach(inp=>{
+    const v=parseFloat(inp.value)||0;
+    if(v>0)division[inp.dataset.uid]=v;
+  });
+  try{
+    if(editId){
+      await sb.from('gastos_grupo').update({descripcion:desc,monto,fecha,cat,division,pagado_por:pagadorId}).eq('id',editId);
+      delete $('gg-desc').dataset.editId;
+    }else{
+      await sb.from('gastos_grupo').insert({grupo_id:GRUPO_ACTUAL.id,pagado_por:pagadorId,descripcion:desc,monto,fecha,cat,division});
+    }
+    cerrar('m-gasto-grupo');renderGrupoDetalle();toast(editId?'Gasto actualizado ✓':'Gasto agregado ✓');
+  }catch(e){alert('Error guardando gasto');console.error(e);}
+}
+
 async function saldarConUsuario(uid,nombre,monto){
   if(!confirm(`¿Confirmar salde de ${fmt(monto)} con ${nombre}?`))return;
   try{
@@ -3586,28 +3679,49 @@ const ONBOARDING_KEY='clara_onboarding_done';
 let onboardStep=0;
 const onboardSteps=[
   {
-    titulo:'¡Bienvenida a Clara! 👋',
-    sub:'Tu app de finanzas personales. En 3 minutos la dejamos lista.',
+    titulo:'¡Hola! Soy Clara 💚',
+    sub:'Tu app de finanzas personales, hecha para Argentina.',
     contenido:`
       <div style="text-align:center;padding:8px 0 16px">
-        <div style="font-size:48px;margin-bottom:10px">💚</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.6">Clara te ayuda a saber exactamente en qué se va tu plata, cuándo vencen tus gastos y cómo vas con tus metas.</div>
+        <div style="font-size:52px;margin-bottom:10px">💚</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.7">Clara te ayuda a saber exactamente en qué se va tu plata, cuándo vencen tus gastos y cómo vas con tus metas — con datos de Argentina en tiempo real.</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-        ${[['💸','Gastos y presupuesto'],['💳','Deudas con seguimiento'],['💹','Portfolio de inversiones'],['🎓','Guías financieras']].map(([ic,lb])=>`<div style="padding:12px;background:var(--bg);border-radius:var(--rs);font-size:12px;display:flex;align-items:center;gap:8px"><span style="font-size:18px">${ic}</span>${lb}</div>`).join('')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        ${[['💸','Gastos e ingresos'],['📌','Gastos fijos'],['💳','Deudas'],['🎯','Metas de ahorro'],['💹','Inversiones'],['👥','Gastos en grupo']].map(([ic,lb])=>`<div style="padding:10px;background:var(--bg);border-radius:var(--rs);font-size:12px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">${ic}</span>${lb}</div>`).join('')}
       </div>`,
     campos:[]
   },
   {
-    titulo:'¿Cómo te llamás?',
-    sub:'Para que la app se sienta más tuya.',
+    titulo:'¿Para qué querés usar Clara? 🎯',
+    sub:'Esto nos ayuda a mostrarte lo más relevante para vos.',
     contenido:`
-      <div class="fg" style="margin-top:8px"><label>Tu nombre</label><input id="ob-nombre" type="text" placeholder="Ej: Sofía" style="font-size:16px" autofocus></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px" id="ob-objetivos">
+        ${[
+          {val:'organizar',ic:'📊',t:'Organizar mis finanzas',s:'Saber en qué gasto y cuánto me queda'},
+          {val:'ahorrar',ic:'🐷',t:'Empezar a ahorrar',s:'Construir un colchón o una meta específica'},
+          {val:'deudas',ic:'💳',t:'Salir de las deudas',s:'Pagar lo que debo de la forma más inteligente'},
+          {val:'invertir',ic:'📈',t:'Hacer crecer mi plata',s:'Inversiones, CEDEARs, protegerme de la inflación'},
+          {val:'pareja',ic:'👫',t:'Organizarme con mi pareja',s:'Dividir gastos y llevar las cuentas juntos'},
+        ].map(o=>`<label style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border-radius:var(--rs);cursor:pointer;border:2px solid transparent" id="ob-obj-${o.val}">
+          <input type="checkbox" value="${o.val}" style="width:16px;height:16px;flex-shrink:0" onchange="toggleObjetivo('${o.val}',this.checked)">
+          <div>
+            <div style="font-size:13px;font-weight:500">${o.ic} ${o.t}</div>
+            <div style="font-size:11px;color:var(--muted)">${o.s}</div>
+          </div>
+        </label>`).join('')}
+      </div>`,
+    campos:[]
+  },
+  {
+    titulo:'Contanos un poco más 👤',
+    sub:'Para personalizar tu experiencia.',
+    contenido:`
+      <div class="fg" style="margin-top:8px"><label>¿Cómo te llamás?</label><input id="ob-nombre" type="text" placeholder="Ej: Sofía" style="font-size:16px" autofocus></div>
       <div class="fg"><label>¿Cómo vas a usar Clara?</label>
-        <select id="ob-modo" style="font-family:var(--sans);font-size:13px">
-          <option value="personal">🧍 Solo yo — Finanzas personales</option>
-          <option value="familiar">👨‍👩‍👧‍👦 En familia — Cuenta del hogar</option>
-          <option value="compartido">💑 En pareja — Con módulo compartido</option>
+        <select id="ob-modo" style="font-family:var(--sans);font-size:13px" onchange="toggleParejaOb()">
+          <option value="personal">🧍 Solo yo</option>
+          <option value="familiar">👨‍👩‍👧‍👦 En familia</option>
+          <option value="compartido">💑 Con mi pareja</option>
         </select>
       </div>
       <div id="ob-pareja-wrap" style="display:none">
@@ -3619,33 +3733,31 @@ const onboardSteps=[
     titulo:'¿Cuánto ganás por mes? 💰',
     sub:'Aproximado. Podés cambiarlo después.',
     contenido:`
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Esto nos permite mostrarte cuánto te queda disponible cada mes y alertarte si estás gastando más de lo que entra.</div>
-      <div class="fg"><label>Ingreso mensual neto (en pesos)</label><input id="ob-ingreso" type="number" placeholder="Ej: 600000" style="font-size:18px;font-weight:600" autofocus></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Esto nos permite mostrarte cuánto te queda disponible y avisarte si estás gastando más de lo que entra.</div>
+      <div class="fg"><label>Ingreso mensual neto</label><input id="ob-ingreso" type="number" placeholder="Ej: 600000" style="font-size:18px;font-weight:600" autofocus oninput="prevIngOb()"></div>
       <div id="ob-salario-ref" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
-      <div class="fg" style="margin-top:10px"><label>¿Tenés otros ingresos variables? (freelance, alquileres...)</label>
+      <div class="fg" style="margin-top:10px"><label>¿Tenés ingresos variables también?</label>
         <select id="ob-ingresos-var" style="font-family:var(--sans)">
-          <option value="no">No, solo el sueldo fijo</option>
-          <option value="si">Sí, ingresos adicionales</option>
+          <option value="no">No, solo sueldo fijo</option>
+          <option value="si">Sí, tengo ingresos adicionales</option>
         </select>
       </div>`,
     campos:['ob-ingreso']
   },
   {
-    titulo:'¿Cuáles son tus gastos fijos? 📌',
+    titulo:'¿Tenés gastos fijos? 📌',
     sub:'Los que pagás todos los meses. Marcá los que aplican.',
     contenido:`
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Podés agregar más detalles después. Por ahora solo marcá cuáles tenés.</div>
-      <div id="ob-gf-checks" style="display:flex;flex-direction:column;gap:8px">
+      <div id="ob-gf-checks" style="display:flex;flex-direction:column;gap:6px">
         ${[
-          {ic:'🏠',nombre:'Alquiler / Hipoteca',cat:'Casa'},
+          {ic:'🏠',nombre:'Alquiler',cat:'Casa'},
           {ic:'💡',nombre:'Servicios (luz, gas, agua)',cat:'Servicios'},
           {ic:'📡',nombre:'Internet / Cable',cat:'Servicios'},
           {ic:'📱',nombre:'Celular',cat:'Suscripciones'},
           {ic:'💊',nombre:'Prepaga / Obra social',cat:'Salud'},
           {ic:'🏫',nombre:'Colegio / Jardín',cat:'Educación'},
-          {ic:'🚗',nombre:'Seguro auto',cat:'Auto'},
-          {ic:'🐾',nombre:'Gastos de mascota',cat:'Mascota'},
-          {ic:'📱',nombre:'Suscripciones (Netflix, Spotify...)',cat:'Suscripciones'},
+          {ic:'🚗',nombre:'Cuota auto / Seguro',cat:'Auto'},
+          {ic:'📺',nombre:'Suscripciones (Netflix, Spotify...)',cat:'Suscripciones'},
         ].map((g,i)=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:var(--rs);cursor:pointer;font-size:13px">
           <input type="checkbox" id="ob-gf-${i}" data-nombre="${g.nombre}" data-cat="${g.cat}" style="width:16px;height:16px">
           <span>${g.ic} ${g.nombre}</span>
@@ -3654,24 +3766,67 @@ const onboardSteps=[
     campos:[]
   },
   {
-    titulo:'¡Listo! Clara está configurada 🎉',
-    sub:'Podés empezar a usarla ahora mismo.',
+    titulo:'¿Tenés deudas o inversiones? 💹',
+    sub:'Opcional — podés cargarlo después también.',
     contenido:`
-      <div style="text-align:center;padding:12px 0">
-        <div style="font-size:48px;margin-bottom:12px">✅</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:16px">Tu perfil está listo. Te recomendamos empezar por cargar tus gastos del mes para que Clara pueda darte información útil desde el primer día.</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="padding:10px 14px;background:var(--green-bg);border-radius:var(--rs);font-size:12.5px;color:var(--green)">💡 <strong>Primero:</strong> Cargá tus ingresos del mes</div>
-        <div style="padding:10px 14px;background:var(--blue-bg);border-radius:var(--rs);font-size:12.5px;color:var(--blue)">💡 <strong>Después:</strong> Sumá tus gastos del mes</div>
-        <div style="padding:10px 14px;background:var(--gold-bg);border-radius:var(--rs);font-size:12.5px;color:var(--gold)">💡 <strong>Cuando quieras:</strong> Cargá tus inversiones para ver el portfolio</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:var(--rs);cursor:pointer">
+          <input type="checkbox" id="ob-tiene-deudas" style="width:16px;height:16px">
+          <div>
+            <div style="font-size:13px;font-weight:500">💳 Tengo deudas que quiero rastrear</div>
+            <div style="font-size:11px;color:var(--muted)">Tarjeta, préstamo, cuotas</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:var(--rs);cursor:pointer">
+          <input type="checkbox" id="ob-tiene-inversiones" style="width:16px;height:16px">
+          <div>
+            <div style="font-size:13px;font-weight:500">📈 Tengo inversiones que quiero seguir</div>
+            <div style="font-size:11px;color:var(--muted)">Plazo fijo, CEDEARs, FCI, dólares</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:var(--rs);cursor:pointer">
+          <input type="checkbox" id="ob-tiene-metas" style="width:16px;height:16px">
+          <div>
+            <div style="font-size:13px;font-weight:500">🎯 Tengo metas de ahorro</div>
+            <div style="font-size:11px;color:var(--muted)">Viaje, auto, fondo de emergencia</div>
+          </div>
+        </label>
       </div>`,
+    campos:[]
+  },
+  {
+    titulo:'¡Todo listo! 🎉',
+    sub:'Clara está configurada para vos.',
+    contenido:`
+      <div style="text-align:center;padding:12px 0 8px">
+        <div style="font-size:48px;margin-bottom:10px">✅</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:16px">Empezá cargando tus gastos del mes para que Clara pueda darte información útil desde el primer día.</div>
+      </div>
+      <div id="ob-pasos-sugeridos" style="display:flex;flex-direction:column;gap:8px"></div>`,
     campos:[]
   }
 ];
 
+function toggleObjetivo(val,checked){
+  const lbl=document.getElementById('ob-obj-'+val);
+  if(lbl)lbl.style.borderColor=checked?'var(--green)':'transparent';
+}
+
+function toggleParejaOb(){
+  const modo=document.getElementById('ob-modo')?.value;
+  const wrap=document.getElementById('ob-pareja-wrap');
+  if(wrap)wrap.style.display=modo==='compartido'?'':'none';
+}
+
+function prevIngOb(){
+  const v=parseFloat(document.getElementById('ob-ingreso')?.value)||0;
+  const ref=document.getElementById('ob-salario-ref');
+  if(ref&&v>0)ref.textContent=`≈ ${fmt(Math.round(v/4.3))} por semana · ${fmt(Math.round(v/30))} por día`;
+}
+
 function mostrarOnboarding(){
   if(localStorage.getItem(ONBOARDING_KEY))return;
+  // Si el usuario ya tiene nombre del login, saltar paso de nombre
   onboardStep=0;
   renderOnboardStep();
 }
@@ -3688,93 +3843,93 @@ function renderOnboardStep(){
   const total=onboardSteps.length;
   ov.innerHTML=`<div style="background:var(--white);border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25)">
     <div style="padding:24px 24px 0">
-      <!-- Progress -->
       <div style="display:flex;gap:4px;margin-bottom:20px">
         ${Array.from({length:total},(_,i)=>`<div style="flex:1;height:3px;border-radius:2px;background:${i<=onboardStep?'var(--green)':'var(--border)'}"></div>`).join('')}
       </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${onboardStep+1} de ${total}</div>
       <div style="font-family:var(--serif);font-size:20px;margin-bottom:4px">${paso.titulo}</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:16px">${paso.sub}</div>
       ${paso.contenido}
     </div>
     <div style="padding:16px 24px 24px;display:flex;justify-content:space-between;gap:10px;margin-top:8px">
       ${onboardStep>0?`<button onclick="onboardBack()" style="padding:9px 18px;border:1px solid var(--border);border-radius:var(--rs);background:none;font-family:var(--sans);cursor:pointer;font-size:13px;color:var(--muted)">← Atrás</button>`:'<span></span>'}
-      <button onclick="onboardNext()" style="padding:9px 24px;border:none;border-radius:var(--rs);background:var(--green);color:#fff;font-family:var(--sans);cursor:pointer;font-size:13px;font-weight:500">
-        ${onboardStep===total-1?'¡Empezar! 🚀':'Siguiente →'}
-      </button>
+      <div style="display:flex;gap:8px">
+        ${onboardStep>0&&onboardStep<total-1?`<button onclick="onboardSkip()" style="padding:9px 14px;border:none;border-radius:var(--rs);background:none;font-family:var(--sans);cursor:pointer;font-size:12px;color:var(--muted)">Saltear</button>`:''}
+        <button onclick="onboardNext()" style="padding:9px 24px;border:none;border-radius:var(--rs);background:var(--green);color:#fff;font-family:var(--sans);cursor:pointer;font-size:13px;font-weight:500">
+          ${onboardStep===total-1?'¡Empezar! 🚀':'Siguiente →'}
+        </button>
+      </div>
     </div>
   </div>`;
 
-  // Attach dynamic listeners after render
-  const modoSel=document.getElementById('ob-modo');
-  if(modoSel)modoSel.addEventListener('change',()=>{
-    const wrap=document.getElementById('ob-pareja-wrap');
-    if(wrap)wrap.style.display=modoSel.value==='compartido'?'':'none';
-  });
-  const ingEl=document.getElementById('ob-ingreso');
-  if(ingEl)ingEl.addEventListener('input',()=>{
-    const v=parseFloat(ingEl.value)||0;
-    const ref=document.getElementById('ob-salario-ref');
-    if(ref&&v>0)ref.textContent=`≈ ${fmt(v/4.3)} por semana · ${fmt(v/30)} por día`;
-  });
+  // Pre-fill nombre if we already have it from profile
+  const obNombre=document.getElementById('ob-nombre');
+  if(obNombre&&PERFIL.nombre)obNombre.value=PERFIL.nombre;
+
+  // Last step — show suggested next steps
+  if(onboardStep===total-1){
+    const pasos=[];
+    pasos.push({c:'var(--green-bg)',t:'var(--green)',ic:'💰',txt:'<strong>Primero:</strong> Cargá tu ingreso del mes'});
+    if(document.getElementById('ob-tiene-deudas')?.checked)
+      pasos.push({c:'var(--red-bg)',t:'var(--red)',ic:'💳',txt:'<strong>Después:</strong> Sumá tus deudas'});
+    if(document.getElementById('ob-tiene-inversiones')?.checked)
+      pasos.push({c:'var(--blue-bg)',t:'var(--blue)',ic:'💹',txt:'<strong>Después:</strong> Cargá tus inversiones'});
+    if(document.getElementById('ob-tiene-metas')?.checked)
+      pasos.push({c:'var(--gold-bg)',t:'var(--gold)',ic:'🎯',txt:'<strong>Después:</strong> Creá tus metas de ahorro'});
+    const el=document.getElementById('ob-pasos-sugeridos');
+    if(el)el.innerHTML=pasos.map(p=>`<div style="padding:10px 14px;background:${p.c};border-radius:var(--rs);font-size:12.5px;color:${p.t}">${p.ic} ${p.txt}</div>`).join('');
+  }
+}
+
+function onboardSkip(){
+  if(onboardStep<onboardSteps.length-1){onboardStep++;renderOnboardStep();}
 }
 
 function onboardNext(){
   const paso=onboardSteps[onboardStep];
-  // Validate required fields
   for(const fid of paso.campos){
     const el=document.getElementById(fid);
     if(el&&!el.value.trim()){el.focus();el.style.borderColor='var(--red)';return;}
   }
-
-  // Save data from current step
-  if(onboardStep===1){
+  // Save step data
+  if(onboardStep===2){
     const nombre=document.getElementById('ob-nombre')?.value.trim();
     const modo=document.getElementById('ob-modo')?.value||'personal';
     const pareja=document.getElementById('ob-pareja')?.value.trim();
     if(nombre)PERFIL.nombre=nombre;
     PERFIL.modo=modo;
     if(pareja)PERFIL.pareja_nombre=pareja;
-    save();
-    // Show/hide compartido nav
-    const navComp=$('nav-compartido');const navSep=$('nav-sep-compartido');
-    if(navComp)navComp.style.display=modo==='compartido'?'':'none';
-    if(navSep)navSep.style.display=modo==='compartido'?'':'none';
+    save();savePerfilSB().catch(()=>{});
   }
-  if(onboardStep===2){
+  if(onboardStep===3){
     const ingreso=parseFloat(document.getElementById('ob-ingreso')?.value)||0;
     if(ingreso>0){
       const mk=mesKey(new Date().getMonth(),new Date().getFullYear());
-      const yaExiste=S.ingresos.find(i=>i.mes===mk&&i.descripcion==='Sueldo');
-      if(!yaExiste)S.ingresos.unshift({id:Date.now(),descripcion:'Sueldo',monto:ingreso,fecha:new Date().toISOString().slice(0,10),cuenta:'yo',mes:mk});
-      save();
+      const data={descripcion:'Sueldo',monto:ingreso,fecha:new Date().toISOString().slice(0,10),cuenta:'yo',mes:mk};
+      sbInsertIngreso(data).then(row=>{S.ingresos.unshift({...data,...row});_saveLocalOnly();}).catch(()=>{});
     }
   }
-  if(onboardStep===3){
-    // Save checked gastos fijos
+  if(onboardStep===4){
     const checks=document.querySelectorAll('#ob-gf-checks input[type=checkbox]:checked');
     const gf=getGF();
     checks.forEach(cb=>{
       const nombre=cb.dataset.nombre;const cat=cb.dataset.cat;
       if(!gf.find(g=>g.nombre===nombre)){
-        gf.push({id:Date.now()+Math.random(),nombre,cat,monto:0,moneda:'ARS',activo:true,pagos:{},desde:mesKey(new Date().getMonth(),new Date().getFullYear())});
+        gf.push({id:String(Date.now()+Math.random()),nombre,cat,monto:0,moneda:'ARS',activo:true,pagos:{},desde:mesKey(new Date().getMonth(),new Date().getFullYear())});
       }
     });
     saveGF(gf);
   }
-
-  if(onboardStep<onboardSteps.length-1){
-    onboardStep++;renderOnboardStep();
-  }else{
-    // Done
+  if(onboardStep<onboardSteps.length-1){onboardStep++;renderOnboardStep();}
+  else{
     localStorage.setItem(ONBOARDING_KEY,'1');
     const ov=$('ob-overlay');if(ov)ov.remove();
     render('inicio');
   }
 }
 
-function onboardBack(){
-  if(onboardStep>0){onboardStep--;renderOnboardStep();}
-}
+function onboardBack(){if(onboardStep>0){onboardStep--;renderOnboardStep();}}
+
 
 // Sidebar expand on mobile touch
 document.addEventListener('DOMContentLoaded',()=>{
