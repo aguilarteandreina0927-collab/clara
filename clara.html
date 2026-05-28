@@ -101,47 +101,34 @@ tr:last-child td{border-bottom:none}
 .mnav button{background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px;font-family:var(--sans);color:var(--muted)}
 
 @media(max-width:680px){
-  /* Layout — sidebar stays left, expands on touch */
   #app-screen{flex-direction:row}
-  .sidebar{width:56px;min-height:100vh;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;overflow-x:hidden;flex-shrink:0;z-index:50;transition:width .25s ease}
-  .sidebar:hover,.sidebar.expanded{width:200px}
-  .sidebar:hover .ni,.sidebar.expanded .ni{font-size:12px;justify-content:flex-start;padding:8px 12px}
-  .sidebar:hover .ni-ic,.sidebar.expanded .ni-ic{font-size:16px}
-  .sidebar:hover .brand-name,.sidebar.expanded .brand-name{display:block}
-  .sidebar:hover .nav-tc,.sidebar.expanded .nav-tc{display:flex}
-  .sidebar:hover .sfoot,.sidebar.expanded .sfoot{display:flex}
-  .brand{padding:12px 0;text-align:center;overflow:hidden}
-  .brand-name{font-size:14px;display:none}
-  .brand-sub,.brand-modo{display:none}
-  .nav{padding:4px 4px;gap:2px}
-  .ni{flex-direction:row;gap:8px;padding:8px 6px;font-size:0;border-radius:8px;align-items:center;justify-content:center;text-align:left;min-width:auto;white-space:nowrap;overflow:hidden}
-  .ni-ic{font-size:20px;width:24px;flex-shrink:0;text-align:center}
-  .nav-sep{margin:4px 6px}
-  .nav-tc{display:none}
-  .sfoot{display:none}
-  .main{padding:14px 12px 24px;margin-left:56px;flex:1;min-width:0;overflow-x:hidden}
-  .sidebar:hover~.main,.sidebar.expanded~.main{margin-left:200px}
+  .sidebar{width:52px!important;min-height:100vh;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;overflow-x:hidden;flex-shrink:0;z-index:50;transition:width .25s ease}
+  .sidebar.expanded{width:200px!important}
+  .sidebar .brand{padding:10px 0;text-align:center;overflow:hidden}
+  .sidebar .brand-name,.sidebar .brand-sub,.sidebar .brand-modo{display:none!important}
+  .sidebar.expanded .brand-name{display:block!important;font-size:13px}
+  .sidebar .nav{padding:4px 4px;gap:2px}
+  .sidebar .ni{flex-direction:row;gap:8px;padding:8px 6px;font-size:0!important;border-radius:8px;align-items:center;justify-content:center;text-align:left;white-space:nowrap;overflow:hidden;min-width:auto}
+  .sidebar.expanded .ni{justify-content:flex-start!important;font-size:12px!important}
+  .sidebar .ni-ic{font-size:20px;width:24px;flex-shrink:0;text-align:center}
+  .sidebar .nav-sep{margin:4px 6px}
+  .sidebar .nav-tc{display:none!important}
+  .sidebar.expanded .nav-tc{display:flex!important}
+  .sidebar .sfoot{display:none!important}
+  .sidebar.expanded .sfoot{display:flex!important}
+  .main{padding:14px 12px 24px;margin-left:52px!important;flex:1;min-width:0;overflow-x:hidden}
+  .sidebar.expanded~.main{margin-left:200px!important}
   #mobile-perfil-btn{display:block}
-
-  /* Typography */
   .pt{font-size:20px}
   .sv{font-size:17px}
   #h-disp{font-size:26px}
   .hero-val{font-size:13px}
-
-  /* Toolbar */
   .tb{flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .tb-r{width:100%;justify-content:flex-end}
-
-  /* Grids → single column */
   .g2,.g3,.g4{grid-template-columns:1fr}
   .f2{grid-template-columns:1fr}
-
-  /* Tables → scroll horizontal */
   .card{overflow-x:auto}
   table{min-width:420px}
-
-  /* Modal → from bottom */
   .ov{align-items:flex-end;padding:0}
   .modal{border-radius:20px 20px 0 0;max-width:100%;max-height:92vh;padding:20px 18px 32px}
 }
