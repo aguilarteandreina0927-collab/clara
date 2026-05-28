@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Clara">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Manrope:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -99,20 +100,27 @@ tr:last-child td{border-bottom:none}
 .mnav{display:flex;align-items:center;gap:6px}
 .mnav button{background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11.5px;font-family:var(--sans);color:var(--muted)}
 
-/* ── MOBILE RESPONSIVE ── */
 @media(max-width:680px){
-  /* Layout — sidebar stays left but icon-only */
+  /* Layout — sidebar stays left, expands on touch */
   #app-screen{flex-direction:row}
-  .sidebar{width:56px;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden;flex-shrink:0}
-  .brand{padding:12px 0;text-align:center}
-  .brand-name{font-size:16px}
+  .sidebar{width:56px;min-height:100vh;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;overflow-x:hidden;flex-shrink:0;z-index:50;transition:width .25s ease}
+  .sidebar:hover,.sidebar.expanded{width:200px}
+  .sidebar:hover .ni,.sidebar.expanded .ni{font-size:12px;justify-content:flex-start;padding:8px 12px}
+  .sidebar:hover .ni-ic,.sidebar.expanded .ni-ic{font-size:16px}
+  .sidebar:hover .brand-name,.sidebar.expanded .brand-name{display:block}
+  .sidebar:hover .nav-tc,.sidebar.expanded .nav-tc{display:flex}
+  .sidebar:hover .sfoot,.sidebar.expanded .sfoot{display:flex}
+  .brand{padding:12px 0;text-align:center;overflow:hidden}
+  .brand-name{font-size:14px;display:none}
   .brand-sub,.brand-modo{display:none}
   .nav{padding:4px 4px;gap:2px}
-  .ni{flex-direction:column;gap:1px;padding:6px 4px;font-size:0;border-radius:8px;align-items:center;justify-content:center;text-align:center;min-width:auto}
-  .ni-ic{font-size:20px;width:auto}
+  .ni{flex-direction:row;gap:8px;padding:8px 6px;font-size:0;border-radius:8px;align-items:center;justify-content:center;text-align:left;min-width:auto;white-space:nowrap;overflow:hidden}
+  .ni-ic{font-size:20px;width:24px;flex-shrink:0;text-align:center}
   .nav-sep{margin:4px 6px}
-  .nav-tc,.sfoot{display:none}
-  .main{padding:14px 12px 24px;flex:1;min-width:0;overflow-x:hidden}
+  .nav-tc{display:none}
+  .sfoot{display:none}
+  .main{padding:14px 12px 24px;margin-left:56px;flex:1;min-width:0;overflow-x:hidden}
+  .sidebar:hover~.main,.sidebar.expanded~.main{margin-left:200px}
 
   /* Typography */
   .pt{font-size:20px}
@@ -175,7 +183,30 @@ tr:last-child td{border-bottom:none}
 <body>
 
 <!-- ═══════ APP SCREEN ═══════ -->
-<div id="app-screen" style="display:flex">
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--green);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="text-align:center;margin-bottom:32px">
+    <div style="font-size:48px;margin-bottom:8px">💚</div>
+    <div style="font-family:var(--serif);font-size:32px;color:#fff;margin-bottom:4px">Clara</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.6)">Tus finanzas personales</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px">
+    <div style="display:flex;gap:0;margin-bottom:20px;background:var(--bg);border-radius:8px;padding:3px">
+      <button id="login-tab" onclick="switchTab('login')" style="flex:1;padding:7px;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;cursor:pointer;background:var(--white);font-weight:500">Entrar</button>
+      <button id="reg-tab" onclick="switchTab('reg')" style="flex:1;padding:7px;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;cursor:pointer;background:none;color:var(--muted)">Crear cuenta</button>
+    </div>
+    <div class="fg" style="margin-bottom:12px"><label>Email</label><input id="auth-email" type="email" placeholder="tu@email.com" autocomplete="email"></div>
+    <div class="fg" style="margin-bottom:16px"><label>Contraseña</label><input id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <div id="auth-nombre-wrap" style="display:none;margin-bottom:12px"><div class="fg"><label>Tu nombre</label><input id="auth-nombre" type="text" placeholder="Ej: Andreina"></div></div>
+    <div id="auth-error" style="font-size:12px;color:var(--red);margin-bottom:8px;display:none"></div>
+    <button id="auth-btn" onclick="doAuth()" style="width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer">Entrar</button>
+    <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--muted)" id="auth-forgot">
+      <a href="#" onclick="resetPassword()" style="color:var(--muted)">¿Olvidaste tu contraseña?</a>
+    </div>
+  </div>
+</div>
+
+<div id="app-screen" style="display:none;flex">
 <button id="btn-gasto-rapido-fab" onclick="abrirCargaRapida()" title="Gasto rápido">+</button>
   <aside class="sidebar">
     <div class="brand">
@@ -826,15 +857,240 @@ let PAGINA='inicio';
 let EST_TAB='avalancha';
 
 function save(){try{localStorage.setItem(KEY,JSON.stringify({S,PERFIL}));}catch(e){}}
+// ── SUPABASE ────────────────────────────────────────
+const SB_URL='https://vyyeavsdfcdsdsyrgnov.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5eWVhdnNkZmNkc2RzeXJnbm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDI1NjMsImV4cCI6MjA5NTIxODU2M30.WN3cJnLdvQ-d1zfEzkXxJo_gNoUDgY7B2zjO5DG27IA';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+let CURRENT_USER=null;
+
+// ── AUTH ────────────────────────────────────────────
+let authTab='login';
+function switchTab(t){
+  authTab=t;
+  $('login-tab').style.background=t==='login'?'var(--white)':'none';
+  $('login-tab').style.color=t==='login'?'var(--ink)':'var(--muted)';
+  $('reg-tab').style.background=t==='reg'?'var(--white)':'none';
+  $('reg-tab').style.color=t==='reg'?'var(--ink)':'var(--muted)';
+  $('auth-nombre-wrap').style.display=t==='reg'?'':'none';
+  $('auth-btn').textContent=t==='login'?'Entrar':'Crear cuenta';
+  $('auth-forgot').style.display=t==='login'?'':'none';
+  $('auth-error').style.display='none';
+}
+
+async function doAuth(){
+  const email=$('auth-email').value.trim();
+  const pass=$('auth-pass').value;
+  const nombre=$('auth-nombre')?.value.trim();
+  const btn=$('auth-btn');
+  if(!email||!pass){showAuthError('Completá email y contraseña');return;}
+  btn.textContent='...';btn.disabled=true;
+  try{
+    let res;
+    if(authTab==='login'){
+      res=await sb.auth.signInWithPassword({email,password:pass});
+    }else{
+      if(!nombre){showAuthError('Ingresá tu nombre');btn.textContent='Crear cuenta';btn.disabled=false;return;}
+      res=await sb.auth.signUp({email,password:pass,options:{data:{nombre}}});
+      if(res.data?.user&&!res.error){
+        // Update perfil with nombre
+        await sb.from('perfiles').upsert({id:res.data.user.id,nombre});
+      }
+    }
+    if(res.error){showAuthError(res.error.message);btn.textContent=authTab==='login'?'Entrar':'Crear cuenta';btn.disabled=false;return;}
+    // Success handled by onAuthStateChange
+  }catch(e){showAuthError('Error de conexión');btn.textContent=authTab==='login'?'Entrar':'Crear cuenta';btn.disabled=false;}
+}
+
+function showAuthError(msg){
+  $('auth-error').textContent=msg;$('auth-error').style.display='';
+}
+
+async function resetPassword(){
+  const email=$('auth-email').value.trim();
+  if(!email){showAuthError('Ingresá tu email primero');return;}
+  await sb.auth.resetPasswordForEmail(email);
+  showAuthError('✓ Te mandamos un email para recuperar la contraseña');
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  CURRENT_USER=null;
+  Object.assign(S,{ingresos:[],gastos:[],deudas:[],metas:[],inversiones:[]});
+  Object.assign(PERFIL,{nombre:'',modo:'personal',pareja_nombre:'',tc:1400});
+  $('app-screen').style.display='none';
+  $('login-screen').style.display='flex';
+}
+
+// ── CARGAR DATOS DESDE SUPABASE ─────────────────────
+async function dbLoad(){
+  if(!CURRENT_USER)return;
+  const uid=CURRENT_USER.id;
+  try{
+    const [ing,gas,deu,met,inv,perf]=await Promise.all([
+      sb.from('ingresos').select('*').eq('user_id',uid).order('fecha',{ascending:false}),
+      sb.from('gastos').select('*').eq('user_id',uid).order('fecha',{ascending:false}),
+      sb.from('deudas').select('*').eq('user_id',uid),
+      sb.from('metas').select('*').eq('user_id',uid),
+      sb.from('inversiones').select('*').eq('user_id',uid),
+      sb.from('perfiles').select('*').eq('id',uid).single(),
+    ]);
+    S.ingresos=(ing.data||[]).map(r=>({...r,descripcion:r.descripcion,reserva:r.reserva}));
+    S.gastos=(gas.data||[]).map(r=>({...r}));
+    S.deudas=(deu.data||[]).map(d=>{
+      const pagos=(d.pagos_deuda||[]);
+      return{...d,cuota_mensual:d.cuota_mensual||0,pagos:pagos,historial_pagos:pagos};
+    });
+    S.metas=met.data||[];
+    S.inversiones=inv.data||[];
+    if(perf.data){
+      Object.assign(PERFIL,{
+        nombre:perf.data.nombre||'',
+        modo:perf.data.modo||'personal',
+        pareja_nombre:perf.data.pareja_nombre||'',
+        tc:perf.data.tc||1400,
+        alquiler:perf.data.alquiler||null
+      });
+    }
+    // Load pagos for each deuda
+    const deudaIds=S.deudas.map(d=>d.id);
+    if(deudaIds.length){
+      const{data:pagos}=await sb.from('pagos_deuda').select('*').in('deuda_id',deudaIds);
+      if(pagos){
+        S.deudas=S.deudas.map(d=>({...d,pagos:(pagos.filter(p=>p.deuda_id===d.id)||[])}));
+      }
+    }
+    // Load gastos fijos
+    const{data:gf}=await sb.from('gastos_fijos').select('*').eq('user_id',uid);
+    if(gf&&gf.length)localStorage.setItem(GF_KEY,JSON.stringify(gf));
+    // Load saldes
+    const{data:sld}=await sb.from('saldes').select('*').eq('user_id',uid);
+    if(sld&&sld.length)localStorage.setItem(SALDES_KEY,JSON.stringify(sld));
+    // Cache locally
+    localStorage.setItem(KEY,JSON.stringify({S,PERFIL}));
+    console.log('✓ Datos cargados desde Supabase');
+  }catch(e){console.error('Error cargando datos:',e);load();}
+}
+
+// ── GUARDAR PERFIL ──────────────────────────────────
+async function savePerfilSB(){
+  if(!CURRENT_USER)return;
+  await sb.from('perfiles').upsert({
+    id:CURRENT_USER.id,nombre:PERFIL.nombre,modo:PERFIL.modo,
+    pareja_nombre:PERFIL.pareja_nombre,tc:PERFIL.tc,alquiler:PERFIL.alquiler
+  });
+}
+
+// ── SAVE OVERRIDE ───────────────────────────────────
+const _saveLocalOnly=()=>{try{localStorage.setItem(KEY,JSON.stringify({S,PERFIL}));}catch(e){}};
+function save(){
+  _saveLocalOnly();
+  if(CURRENT_USER)savePerfilSB().catch(()=>{});
+}
+
+// ── SUPABASE CRUD ───────────────────────────────────
+async function sbInsertIngreso(data){
+  if(!CURRENT_USER)return data;
+  const{data:row,error}=await sb.from('ingresos').insert({...data,user_id:CURRENT_USER.id}).select().single();
+  if(error)throw error;return row;
+}
+async function sbUpdateIngreso(id,data){
+  if(!CURRENT_USER)return;
+  await sb.from('ingresos').update(data).eq('id',id).eq('user_id',CURRENT_USER.id);
+}
+async function sbDeleteIngreso(id){
+  if(!CURRENT_USER)return;
+  await sb.from('ingresos').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+}
+async function sbInsertGasto(data){
+  if(!CURRENT_USER)return data;
+  const{data:row,error}=await sb.from('gastos').insert({...data,user_id:CURRENT_USER.id}).select().single();
+  if(error)throw error;return row;
+}
+async function sbUpdateGasto(id,data){
+  if(!CURRENT_USER)return;
+  await sb.from('gastos').update(data).eq('id',id).eq('user_id',CURRENT_USER.id);
+}
+async function sbDeleteGasto(id){
+  if(!CURRENT_USER)return;
+  await sb.from('gastos').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+}
+async function sbInsertDeuda(data){
+  if(!CURRENT_USER)return data;
+  const{data:row,error}=await sb.from('deudas').insert({...data,user_id:CURRENT_USER.id}).select().single();
+  if(error)throw error;return row;
+}
+async function sbDeleteDeuda(id){
+  if(!CURRENT_USER)return;
+  await sb.from('deudas').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+}
+async function sbInsertPagoDeuda(data){
+  if(!CURRENT_USER)return data;
+  const{data:row,error}=await sb.from('pagos_deuda').insert({...data,user_id:CURRENT_USER.id}).select().single();
+  if(error)throw error;return row;
+}
+async function sbUpsertMeta(data){
+  if(!CURRENT_USER)return data;
+  const payload={...data,user_id:CURRENT_USER.id};
+  if(data.id){const{data:row}=await sb.from('metas').update(payload).eq('id',data.id).select().single();return row||data;}
+  const{data:row,error}=await sb.from('metas').insert(payload).select().single();
+  if(error)throw error;return row;
+}
+async function sbDeleteMeta(id){if(!CURRENT_USER)return;await sb.from('metas').delete().eq('id',id);}
+async function sbUpsertInversion(data){
+  if(!CURRENT_USER)return data;
+  const payload={...data,user_id:CURRENT_USER.id};
+  if(data.id){const{data:row}=await sb.from('inversiones').update(payload).eq('id',data.id).select().single();return row||data;}
+  const{data:row,error}=await sb.from('inversiones').insert(payload).select().single();
+  if(error)throw error;return row;
+}
+async function sbDeleteInversion(id){if(!CURRENT_USER)return;await sb.from('inversiones').delete().eq('id',id);}
+async function sbUpsertGF(data){
+  if(!CURRENT_USER)return;
+  await sb.from('gastos_fijos').upsert({...data,user_id:CURRENT_USER.id});
+}
+async function sbDeleteGF(id){if(!CURRENT_USER)return;await sb.from('gastos_fijos').delete().eq('id',id);}
+async function sbInsertSalde(data){
+  if(!CURRENT_USER)return;
+  await sb.from('saldes').insert({...data,user_id:CURRENT_USER.id});
+}
+
+// ── APP INIT ────────────────────────────────────────
+async function initApp(){
+  // Check existing session
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){
+    CURRENT_USER=session.user;
+    await dbLoad();
+    $('login-screen').style.display='none';
+    $('app-screen').style.display='flex';
+    fetchTC();render('inicio');
+  }else{
+    // Show login
+    $('app-screen').style.display='none';
+    $('login-screen').style.display='flex';
+  }
+  // Listen for auth changes
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){
+      CURRENT_USER=session.user;
+      await dbLoad();
+      $('login-screen').style.display='none';
+      $('app-screen').style.display='flex';
+      fetchTC();render('inicio');
+    }else if(event==='SIGNED_OUT'){
+      $('app-screen').style.display='none';
+      $('login-screen').style.display='flex';
+    }
+  });
+}
+
 function load(){
   try{
     const d=localStorage.getItem(KEY);
     if(d){const p=JSON.parse(d);if(p.S)Object.assign(S,p.S);if(p.PERFIL)Object.assign(PERFIL,p.PERFIL);}
-    // Legacy support for old clara_v1 format
-    const old=localStorage.getItem('clara_v1_old')||localStorage.getItem('clara_data');
-    if(old&&!d){const p=JSON.parse(old);if(p.ingresos)Object.assign(S,p);}
   }catch(e){}
 }
+
 
 // ── HELPERS ────────────────────────────────────────
 const fmt=n=>'$'+new Intl.NumberFormat('es-AR').format(Math.round(n||0));
@@ -1086,16 +1342,29 @@ function abrirModalIngreso(id){
   abrir('m-ingreso');
 }
 function editarIngreso(id){abrirModalIngreso(id);}
-function guardarIngreso(){
+async function guardarIngreso(){
   const id=$('mi-id').value;const mk=mesKey(MES,ANIO);
-  const data={id:id?parseInt(id):Date.now(),descripcion:$('mi-desc').value.trim(),monto:parseFloat($('mi-monto').value)||0,fecha:$('mi-fecha').value,cuenta:$('mi-cuenta').value,mes:mk};
+  const data={descripcion:$('mi-desc').value.trim(),monto:parseFloat($('mi-monto').value)||0,fecha:$('mi-fecha').value,cuenta:$('mi-cuenta').value,mes:mk};
   if(!data.descripcion||!data.monto){alert('Completá descripción y monto');return;}
-  if(id){const idx=S.ingresos.findIndex(x=>x.id===parseInt(id));if(idx>=0)S.ingresos[idx]=data;}
-  else S.ingresos.unshift(data);
-  save();cerrar('m-ingreso');renderIngresos();if(PAGINA==='inicio')renderInicio();
+  try{
+    if(id){
+      await sbUpdateIngreso(parseInt(id),data);
+      const idx=S.ingresos.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0)S.ingresos[idx]={...S.ingresos[idx],...data};
+    }else{
+      const row=await sbInsertIngreso(data);
+      S.ingresos.unshift({...data,...row});
+    }
+    _saveLocalOnly();cerrar('m-ingreso');renderIngresos();if(PAGINA==='inicio')renderInicio();
+  }catch(e){alert('Error guardando. Revisá tu conexión.');console.error(e);}
 }
-function eliminarIngreso(id){
-  if(!confirm('¿Eliminar?'))return;S.ingresos=S.ingresos.filter(x=>String(x.id)!==String(id));save();renderIngresos();if(PAGINA==='inicio')renderInicio();
+async function eliminarIngreso(id){
+  if(!confirm('¿Eliminar?'))return;
+  try{
+    await sbDeleteIngreso(id);
+    S.ingresos=S.ingresos.filter(x=>String(x.id)!==String(id));
+    _saveLocalOnly();renderIngresos();if(PAGINA==='inicio')renderInicio();
+  }catch(e){alert('Error eliminando.');console.error(e);}
 }
 
 // ── GASTOS ─────────────────────────────────────────
@@ -1140,29 +1409,38 @@ function abrirModalGasto(id){
   toggleCompartido();prevGasto();abrir('m-gasto');
 }
 function editarGasto(id){abrirModalGasto(id);}
-function guardarGasto(){
+async function guardarGasto(){
   const id=$('mg-id').value;const mk=mesKey(MES,ANIO);
   const moneda=$('mg-mon').value||'ARS';const montoOrig=parseFloat($('mg-monto').value)||0;
   const monto=moneda==='USD'?Math.round(montoOrig*PERFIL.tc):montoOrig;
   const compartido=$('mg-compartido').checked;
   let division=null;
   if(compartido){
-    const tipo=$('mg-div-tipo').value;
-    const val=parseFloat($('mg-div-val').value)||50;
-    const{yo,el}=calcShares(monto,tipo,val);
-    division={tipo,val,yo,el};
+    const tipo=$('mg-div-tipo').value;const val=parseFloat($('mg-div-val').value)||50;
+    const{yo,el}=calcShares(monto,tipo,val);division={tipo,val,yo,el};
   }
-  const data={id:id?parseInt(id):Date.now(),descripcion:$('mg-desc').value.trim(),monto,monto_original:montoOrig,moneda,fecha:$('mg-fecha').value,cat:$('mg-cat').value,cuenta:$('mg-cuenta').value,mes:mk,compartido:compartido||false,division};
+  const data={descripcion:$('mg-desc').value.trim(),monto,monto_original:montoOrig,moneda,fecha:$('mg-fecha').value,cat:$('mg-cat').value,cuenta:$('mg-cuenta').value,mes:mk,compartido:compartido||false,division};
   if(!data.descripcion||!montoOrig){alert('Completá descripción y monto');return;}
-  if(id){const idx=S.gastos.findIndex(x=>x.id===parseInt(id));if(idx>=0)S.gastos[idx]=data;}
-  else S.gastos.unshift(data);
-  save();cerrar('m-gasto');renderGastos();if(PAGINA==='inicio')renderInicio();
-  if(PAGINA==='compartido')renderCompartido();
+  try{
+    if(id){
+      await sbUpdateGasto(parseInt(id),data);
+      const idx=S.gastos.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0)S.gastos[idx]={...S.gastos[idx],...data};
+    }else{
+      const row=await sbInsertGasto(data);
+      S.gastos.unshift({...data,...row});
+    }
+    _saveLocalOnly();cerrar('m-gasto');renderGastos();if(PAGINA==='inicio')renderInicio();
+    if(PAGINA==='compartido')renderCompartido();
+  }catch(e){alert('Error guardando. Revisá tu conexión.');console.error(e);}
 }
-function eliminarGasto(id){
+async function eliminarGasto(id){
   if(!confirm('¿Eliminar?'))return;
-  S.gastos=S.gastos.filter(x=>String(x.id)!==String(id));
-  save();renderGastos();if(PAGINA==='inicio')renderInicio();
+  try{
+    await sbDeleteGasto(id);
+    S.gastos=S.gastos.filter(x=>String(x.id)!==String(id));
+    _saveLocalOnly();renderGastos();if(PAGINA==='inicio')renderInicio();
+  }catch(e){alert('Error eliminando.');console.error(e);}
 }
 
 // ── DEUDAS ─────────────────────────────────────────
@@ -2372,7 +2650,7 @@ function abrirEdu(id){
 const GF_KEY='clara_gastos_fijos';
 
 function getGF(){try{const s=localStorage.getItem(GF_KEY);return s?JSON.parse(s):[];}catch(e){return[];}}
-function saveGF(d){localStorage.setItem(GF_KEY,JSON.stringify(d));}
+function saveGF(d){localStorage.setItem(GF_KEY,JSON.stringify(d));if(CURRENT_USER)d.forEach(g=>sbUpsertGF(g).catch(()=>{}));}
 
 function fmtGF(gf,monto){
   // Format amount in gf's currency
@@ -2665,21 +2943,24 @@ function prevRapido(){
   else eq.style.display='none';
 }
 
-function guardarRapido(){
+async function guardarRapido(){
   const montoOrig=parseFloat($('mr-monto').value)||0;if(!montoOrig){alert('Ingresá el monto');return;}
   const moneda=$('mr-mon').value||'ARS';
   const monto=moneda==='USD'?Math.round(montoOrig*PERFIL.tc):montoOrig;
   const now=new Date();const mk=mesKey(now.getMonth(),now.getFullYear());
-  const data={id:Date.now(),descripcion:$('mr-desc').value.trim()||mrCatSel,monto,monto_original:montoOrig,moneda,fecha:now.toISOString().slice(0,10),cat:mrCatSel,cuenta:'yo',mes:mk};
-  S.gastos.unshift(data);save();cerrar('m-rapido');
-  if(PAGINA==='inicio')renderInicio();
-  else if(PAGINA==='gastos')renderGastos();
-  renderLoQueViene();
-  // Toast
-  const t=document.createElement('div');
-  t.textContent='✓ Gasto guardado';
-  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;font-family:var(--sans)';
-  document.body.appendChild(t);setTimeout(()=>t.remove(),2000);
+  const data={descripcion:$('mr-desc').value.trim()||mrCatSel,monto,monto_original:montoOrig,moneda,fecha:now.toISOString().slice(0,10),cat:mrCatSel,cuenta:'yo',mes:mk,compartido:false,division:null};
+  try{
+    const row=await sbInsertGasto(data);
+    S.gastos.unshift({...data,...row});
+    _saveLocalOnly();cerrar('m-rapido');
+    if(PAGINA==='inicio')renderInicio();
+    else if(PAGINA==='gastos')renderGastos();
+    renderLoQueViene();
+    const t=document.createElement('div');
+    t.textContent='✓ Gasto guardado';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;font-family:var(--sans)';
+    document.body.appendChild(t);setTimeout(()=>t.remove(),2000);
+  }catch(e){alert('Error guardando.');console.error(e);}
 }
 
 // ── FOTO TICKET CON IA ──────────────────────────────
@@ -2848,7 +3129,7 @@ function renderLoQueViene(){
 const SALDES_KEY='clara_saldes';
 
 function getSaldes(){try{const s=localStorage.getItem(SALDES_KEY);return s?JSON.parse(s):[];}catch(e){return[];}}
-function saveSaldes(d){localStorage.setItem(SALDES_KEY,JSON.stringify(d));}
+function saveSaldes(d){localStorage.setItem(SALDES_KEY,JSON.stringify(d));if(CURRENT_USER)d.slice(-1).forEach(s=>sbInsertSalde(s).catch(()=>{}));}
 
 function calcShares(monto,tipo,val){
   if(tipo==='50/50')return{yo:Math.round(monto/2),el:Math.round(monto/2)};
@@ -3188,7 +3469,21 @@ function onboardBack(){
   if(onboardStep>0){onboardStep--;renderOnboardStep();}
 }
 
-load();fetchTC();
+// Sidebar expand on mobile touch
+document.addEventListener('DOMContentLoaded',()=>{
+  const sb2=document.querySelector('.sidebar');
+  if(!sb2)return;
+  let tx=0;
+  sb2.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+  sb2.addEventListener('touchend',e=>{
+    if(Math.abs(e.changedTouches[0].clientX-tx)<10)sb2.classList.toggle('expanded');
+  },{passive:true});
+  sb2.querySelectorAll('.ni').forEach(n=>n.addEventListener('click',()=>{
+    if(window.innerWidth<=680)setTimeout(()=>sb2.classList.remove('expanded'),300);
+  }));
+});
+
+initApp();
 mostrarOnboarding();
 render('inicio');
 </script>
