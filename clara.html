@@ -214,7 +214,7 @@ tr:last-child td{border-bottom:none}
       <div class="ni" data-page="proyeccion"><span class="ni-ic">📊</span>Proyección</div>
       <div class="ni" data-page="estrategia"><span class="ni-ic">🗺</span>Estrategia Deudas</div>
       <div class="nav-sep" id="nav-sep-compartido" style="display:none"></div>
-      <div class="ni" data-page="compartido" id="nav-compartido"><span class="ni-ic">🤝</span>Lo nuestro</div>
+      <div class="ni" data-page="grupos" id="nav-grupos"><span class="ni-ic">👥</span>Grupos</div>
     </nav>
     <div class="nav-tc" onclick="fetchTC()">
       <span>💵 USD/ARS</span>
@@ -468,34 +468,103 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <!-- COMPARTIDO (Escenario 2) -->
-  <div class="page" id="page-compartido">
+  <!-- GRUPOS -->
+  <div class="page" id="page-grupos">
     <div class="tb">
-      <div><div class="pt">Lo nuestro 🤝</div><div class="ps">Gastos compartidos — quién le debe a quién</div></div>
+      <div><div class="pt">Grupos</div><div class="ps">Dividí gastos con quien quieras</div></div>
+      <div class="tb-r"><button class="btn btn-pri btn-sm" onclick="abrirModalCrearGrupo()">+ Nuevo grupo</button></div>
+    </div>
+    <div id="grupos-lista"></div>
+  </div>
+
+  <!-- DETALLE GRUPO -->
+  <div class="page" id="page-grupo-detalle">
+    <div class="tb">
+      <div>
+        <button onclick="render('grupos')" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);font-family:var(--sans);padding:0;margin-bottom:4px">← Grupos</button>
+        <div class="pt" id="gd-titulo">Grupo</div>
+        <div class="ps" id="gd-codigo"></div>
+      </div>
       <div class="tb-r">
-        <div class="mnav">
-          <button onclick="cambiarMes(-1)">←</button>
-          <span id="comp-mes-lbl"></span>
-          <button onclick="cambiarMes(1)">→</button>
-        </div>
+        <button class="btn btn-pri btn-sm" onclick="abrirModalGastoGrupo()">+ Gasto</button>
       </div>
     </div>
-
-    <!-- BALANCE -->
-    <div id="comp-balance" style="margin-bottom:16px"></div>
-
-    <!-- HISTORIAL -->
+    <!-- Balance -->
+    <div id="gd-balance" style="margin-bottom:16px"></div>
+    <!-- Miembros -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="ct" style="margin:0">Miembros</div>
+        <button onclick="compartirCodigo()" class="btn btn-sec btn-sm">📤 Invitar</button>
+      </div>
+      <div id="gd-miembros"></div>
+    </div>
+    <!-- Gastos -->
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="ct" style="margin:0">Gastos compartidos del mes</div>
-        <button class="btn btn-pri btn-sm" onclick="abrirModalGasto();document.getElementById('mg-compartido').checked=true;toggleCompartido()">+ Agregar</button>
-      </div>
-      <div id="comp-lista"></div>
+      <div class="ct">Gastos del grupo</div>
+      <div id="gd-gastos"></div>
     </div>
+  </div>
 
-    <!-- HISTORIAL DE SALDES -->
-    <div class="card" style="margin-top:14px">
-      <div class="ct">Historial de saldes</div>
-      <div id="comp-saldes"></div>
+  <!-- MODAL CREAR GRUPO -->
+  <div class="ov" id="m-crear-grupo">
+    <div class="modal" style="max-width:400px">
+      <div class="mt">Nuevo grupo</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="fg" style="width:70px;flex-shrink:0"><label>Emoji</label><input id="ng-emoji" type="text" value="👥" maxlength="2" style="text-align:center;font-size:22px"></div>
+        <div class="fg" style="flex:1"><label>Nombre del grupo</label><input id="ng-nombre" type="text" placeholder="Ej: Casa, Las chicas, Viaje..."></div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-sec btn-sm" onclick="cerrar('m-crear-grupo')">Cancelar</button>
+        <button class="btn btn-pri btn-sm" onclick="crearGrupo()">Crear grupo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL UNIRSE A GRUPO -->
+  <div class="ov" id="m-unirse-grupo">
+    <div class="modal" style="max-width:400px">
+      <div class="mt">Unirse a un grupo</div>
+      <div class="ms" style="margin-bottom:14px">Ingresá el código que te mandaron</div>
+      <div class="fg">
+        <label>Código de invitación</label>
+        <input id="ug-codigo" type="text" placeholder="CLARA-XXXX" style="text-transform:uppercase;font-family:var(--mono);font-size:18px;letter-spacing:2px">
+      </div>
+      <div id="ug-error" style="font-size:12px;color:var(--red);display:none"></div>
+      <div class="mf">
+        <button class="btn btn-sec btn-sm" onclick="cerrar('m-unirse-grupo')">Cancelar</button>
+        <button class="btn btn-pri btn-sm" onclick="unirseGrupo()">Unirme</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GASTO GRUPO -->
+  <div class="ov" id="m-gasto-grupo">
+    <div class="modal">
+      <div class="mt">Agregar gasto al grupo</div>
+      <div class="fg"><label>Descripción</label><input id="gg-desc" type="text" placeholder="Ej: Cena, Uber, Supermercado..."></div>
+      <div class="f2">
+        <div class="fg"><label>Monto</label><input id="gg-monto" type="number" placeholder="0" oninput="calcDivGrupo()"></div>
+        <div class="fg"><label>Fecha</label><input id="gg-fecha" type="date"></div>
+      </div>
+      <div class="fg"><label>Categoría</label>
+        <select id="gg-cat" style="font-family:var(--sans)">
+          <option value="Comida">🛒 Comida</option><option value="Casa">🏠 Casa</option>
+          <option value="Transporte">🚗 Transporte</option><option value="Entretenimiento">🎬 Entretenimiento</option>
+          <option value="Servicios">💡 Servicios</option><option value="Otros">📦 Otros</option>
+        </select>
+      </div>
+      <div class="fg"><label>¿Quién pagó?</label>
+        <select id="gg-pagador" onchange="calcDivGrupo()" style="font-family:var(--sans)"></select>
+      </div>
+      <div class="fg">
+        <label>División</label>
+        <div id="gg-division"></div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-sec btn-sm" onclick="cerrar('m-gasto-grupo')">Cancelar</button>
+        <button class="btn btn-pri btn-sm" onclick="guardarGastoGrupo()">Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -1132,7 +1201,8 @@ function render(p){
   else if(p==='metas')renderMetas();
   else if(p==='inversiones')renderInversiones();
   else if(p==='estadisticas')renderEstadisticas();
-  else if(p==='compartido')renderCompartido();
+  else if(p==='grupos')renderGrupos();
+  else if(p==='grupo-detalle')renderGrupoDetalle();
   else if(p==='educacion')renderEducacion();
   else if(p==='proyeccion')renderProyeccion();
   else if(p==='estrategia')renderEstrategia();
@@ -1436,7 +1506,6 @@ async function guardarGasto(){
       S.gastos.unshift({...data,...row});
     }
     _saveLocalOnly();cerrar('m-gasto');renderGastos();if(PAGINA==='inicio')renderInicio();
-    if(PAGINA==='compartido')renderCompartido();
   }catch(e){alert('Error guardando. Revisá tu conexión.');console.error(e);}
 }
 async function eliminarGasto(id){
@@ -3230,150 +3299,279 @@ function renderLoQueViene(){
 }
 
 
-// ── GASTOS COMPARTIDOS ──────────────────────────────
-const SALDES_KEY='clara_saldes';
+// ── GRUPOS ──────────────────────────────────────────
+let GRUPO_ACTUAL=null;
+let GRUPOS_CACHE=[];
+let MIEMBROS_CACHE={};
 
-function getSaldes(){try{const s=localStorage.getItem(SALDES_KEY);return s?JSON.parse(s):[];}catch(e){return[];}}
-function saveSaldes(d){localStorage.setItem(SALDES_KEY,JSON.stringify(d));if(CURRENT_USER)d.slice(-1).forEach(s=>sbInsertSalde(s).catch(()=>{}));}
-
-function calcShares(monto,tipo,val){
-  if(tipo==='50/50')return{yo:Math.round(monto/2),el:Math.round(monto/2)};
-  if(tipo==='porcentaje'){const pct=Math.min(100,Math.max(0,val||50));return{yo:Math.round(monto*pct/100),el:monto-Math.round(monto*pct/100)};}
-  if(tipo==='monto'){const yoM=Math.min(monto,val||0);return{yo:yoM,el:monto-yoM};}
-  return{yo:Math.round(monto/2),el:Math.round(monto/2)};
-}
-
-function toggleCompartido(){
-  const checked=$('mg-compartido')?.checked;
-  const wrap=$('mg-division-wrap');
-  if(wrap)wrap.style.display=checked?'':'none';
-  if(checked)calcDivision();
-}
-
-function calcDivision(){
-  const tipo=$('mg-div-tipo')?.value||'50/50';
-  const valWrap=$('mg-div-val-wrap');const valLbl=$('mg-div-val-lbl');
-  if(valWrap){
-    if(tipo==='50/50'){valWrap.style.display='none';}
-    else{valWrap.style.display='';valLbl.textContent=tipo==='porcentaje'?'Mi % del gasto':'Mi monto ($)';}
-  }
-  const monto=parseFloat($('mg-monto')?.value)||0;
-  if(!monto){if($('mg-div-preview'))$('mg-div-preview').textContent='Ingresá el monto primero';return;}
-  const val=parseFloat($('mg-div-val')?.value)||50;
-  const{yo,el}=calcShares(monto,tipo,val);
-  const nombre=PERFIL.pareja_nombre||'él/ella';
-  if($('mg-div-preview'))$('mg-div-preview').innerHTML=`<span style="color:var(--green)">Vos: ${fmt(yo)}</span> &nbsp;·&nbsp; <span style="color:var(--blue)">${nombre}: ${fmt(el)}</span>`;
-}
-
-// Calcular balance del mes
-function calcBalance(mk){
-  const gastos=S.gastos.filter(g=>g.compartido&&g.mes===mk);
-  let yoLeDebo=0;// cuánto le debo yo a él/ella
-  let elMeDebe=0;// cuánto me debe él/ella a mí
-  gastos.forEach(g=>{
-    const div=g.division||calcShares(g.monto,'50/50',50);
-    if(g.cuenta==='yo'){
-      // Yo pagué todo — él/ella me debe su parte
-      elMeDebe+=div.el;
-    }else{
-      // Él/ella pagó todo — yo le debo mi parte
-      yoLeDebo+=div.yo;
+async function renderGrupos(){
+  const el=$('grupos-lista');if(!el)return;
+  el.innerHTML='<div class="loading">Cargando grupos...</div>';
+  try{
+    // Grupos donde soy miembro
+    const{data:misGrupos}=await sb.from('miembros_grupo').select('grupo_id').eq('user_id',CURRENT_USER.id);
+    const ids=(misGrupos||[]).map(m=>m.grupo_id);
+    if(!ids.length){
+      el.innerHTML=`<div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:40px;margin-bottom:12px">👥</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:6px">Sin grupos todavía</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Creá un grupo para dividir gastos con quien quieras</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-pri btn-sm" onclick="abrirModalCrearGrupo()">+ Crear grupo</button>
+          <button class="btn btn-sec btn-sm" onclick="abrirModalUnirseGrupo()">Tengo un código</button>
+        </div>
+      </div>`;
+      return;
     }
+    const{data:grupos}=await sb.from('grupos').select('*').in('id',ids).eq('activo',true);
+    GRUPOS_CACHE=grupos||[];
+
+    // Para cada grupo calcular balance rápido
+    el.innerHTML=`
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-sec btn-sm" onclick="abrirModalUnirseGrupo()">🔑 Tengo un código</button>
+      </div>
+      ${GRUPOS_CACHE.map(g=>`
+        <div class="card" style="cursor:pointer;margin-bottom:10px" onclick="abrirGrupo('${g.id}')">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:28px">${g.emoji||'👥'}</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:500">${g.nombre}</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Código: ${g.codigo}</div>
+            </div>
+            <div style="font-size:18px;color:var(--muted)">→</div>
+          </div>
+        </div>`).join('')}`;
+  }catch(e){el.innerHTML='<div class="loading">Error cargando grupos</div>';console.error(e);}
+}
+
+async function abrirGrupo(id){
+  GRUPO_ACTUAL=GRUPOS_CACHE.find(g=>g.id===id)||{id};
+  // Show detalle page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  $('page-grupo-detalle')?.classList.add('on');
+  PAGINA='grupo-detalle';
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  $('nav-grupos')?.classList.add('active');
+  renderGrupoDetalle();
+}
+
+async function renderGrupoDetalle(){
+  if(!GRUPO_ACTUAL)return;
+  const g=GRUPO_ACTUAL;
+  if($('gd-titulo'))$('gd-titulo').textContent=`${g.emoji||'👥'} ${g.nombre}`;
+  if($('gd-codigo'))$('gd-codigo').textContent=`Código: ${g.codigo} · Tocá Invitar para compartirlo`;
+
+  try{
+    // Cargar miembros
+    const{data:miembros}=await sb.from('miembros_grupo').select('*').eq('grupo_id',g.id);
+    MIEMBROS_CACHE[g.id]=miembros||[];
+
+    // Cargar perfiles de miembros
+    const uids=(miembros||[]).map(m=>m.user_id);
+    const{data:perfs}=await sb.from('perfiles').select('id,nombre').in('id',uids);
+    const nombrePorId={};(perfs||[]).forEach(p=>{nombrePorId[p.id]=p.nombre||'Usuario';});
+
+    // Render miembros
+    $('gd-miembros').innerHTML=(miembros||[]).map(m=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-family:var(--serif)">${(nombrePorId[m.user_id]||'?')[0].toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="font-size:13px">${nombrePorId[m.user_id]||'Usuario'}</div>
+          ${m.user_id===CURRENT_USER.id?'<div style="font-size:10.5px;color:var(--muted)">Vos</div>':''}
+        </div>
+      </div>`).join('');
+
+    // Cargar gastos
+    const{data:gastos}=await sb.from('gastos_grupo').select('*').eq('grupo_id',g.id).order('fecha',{ascending:false});
+
+    // Calcular balance
+    const balances={};
+    uids.forEach(uid=>{balances[uid]=0;});
+    (gastos||[]).forEach(gasto=>{
+      balances[gasto.pagado_por]=(balances[gasto.pagado_por]||0)+gasto.monto;
+      const div=gasto.division||{};
+      Object.entries(div).forEach(([uid,monto])=>{
+        balances[uid]=(balances[uid]||0)-parseFloat(monto);
+      });
+    });
+
+    // Render balance
+    const miBalance=balances[CURRENT_USER.id]||0;
+    $('gd-balance').innerHTML=`
+      <div class="card" style="background:${miBalance>=0?'var(--green-bg)':'var(--red-bg)'}">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Tu balance en el grupo</div>
+          ${miBalance===0?'<div style="font-family:var(--serif);font-size:22px;color:var(--green)">✓ Estás en cero</div>'
+            :miBalance>0?`<div style="font-size:12px;color:var(--muted)">Te deben en total</div><div style="font-family:var(--serif);font-size:28px;color:var(--green)">${fmt(miBalance)}</div>`
+            :`<div style="font-size:12px;color:var(--muted)">Debés en total</div><div style="font-family:var(--serif);font-size:28px;color:var(--red)">${fmt(Math.abs(miBalance))}</div>`}
+        </div>
+        ${uids.filter(uid=>uid!==CURRENT_USER.id).map(uid=>{
+          const b=balances[uid]||0;
+          if(Math.abs(b)<1)return'';
+          const nombre=nombrePorId[uid]||'Usuario';
+          return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(0,0,0,.06);font-size:12.5px">
+            <span>${b<0?nombre+' te debe':' Vos le debés a '+nombre}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-family:var(--mono);font-weight:500">${fmt(Math.abs(b))}</span>
+              <button onclick="saldarConUsuario('${uid}','${nombre}',${Math.abs(b)})" style="font-size:10.5px;padding:3px 8px;background:var(--ink);color:#fff;border:none;border-radius:var(--rs);cursor:pointer;font-family:var(--sans)">Saldar</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+    // Render gastos
+    $('gd-gastos').innerHTML=(gastos||[]).length?(gastos||[]).map(gasto=>{
+      const pagadorNombre=nombrePorId[gasto.pagado_por]||'?';
+      const miParte=(gasto.division||{})[CURRENT_USER.id]||0;
+      return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">${gasto.descripcion}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${gasto.fecha} · Pagó: ${pagadorNombre}</div>
+          ${miParte>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">Tu parte: ${fmt(miParte)}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:13px">${fmt(gasto.monto)}</div>
+          ${gasto.pagado_por===CURRENT_USER.id?`<button onclick="eliminarGastoGrupo(${gasto.id})" style="font-size:10.5px;color:var(--muted);background:none;border:none;cursor:pointer;margin-top:4px">🗑</button>`:''}
+        </div>
+      </div>`;
+    }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin gastos todavía. ¡Agregá el primero!</div>';
+
+    // Poblar selector de pagador en modal
+    const sel=$('gg-pagador');
+    if(sel){
+      sel.innerHTML=(miembros||[]).map(m=>`<option value="${m.user_id}"${m.user_id===CURRENT_USER.id?' selected':''}>${nombrePorId[m.user_id]||'Usuario'}${m.user_id===CURRENT_USER.id?' (vos)':''}</option>`).join('');
+    }
+  }catch(e){console.error(e);}
+}
+
+function abrirModalCrearGrupo(){
+  $('ng-nombre').value='';$('ng-emoji').value='👥';abrir('m-crear-grupo');
+  setTimeout(()=>$('ng-nombre').focus(),100);
+}
+
+function abrirModalUnirseGrupo(){
+  $('ug-codigo').value='';$('ug-error').style.display='none';abrir('m-unirse-grupo');
+  setTimeout(()=>$('ug-codigo').focus(),100);
+}
+
+async function crearGrupo(){
+  const nombre=$('ng-nombre').value.trim();
+  const emoji=$('ng-emoji').value.trim()||'👥';
+  if(!nombre){alert('Ingresá un nombre');return;}
+  try{
+    // Generar código único
+    const{data:codigoData}=await sb.rpc('generar_codigo_grupo');
+    const codigo=codigoData||('CLARA-'+Math.random().toString(36).slice(2,6).toUpperCase());
+    // Crear grupo
+    const{data:grupo,error}=await sb.from('grupos').insert({nombre,emoji,codigo,creado_por:CURRENT_USER.id}).select().single();
+    if(error)throw error;
+    // Unirse como miembro
+    await sb.from('miembros_grupo').insert({grupo_id:grupo.id,user_id:CURRENT_USER.id,nombre_display:PERFIL.nombre||'Yo'});
+    cerrar('m-crear-grupo');
+    GRUPOS_CACHE.push(grupo);
+    GRUPO_ACTUAL=grupo;
+    toast(`Grupo "${nombre}" creado · Código: ${codigo}`);
+    abrirGrupo(grupo.id);
+  }catch(e){alert('Error creando grupo');console.error(e);}
+}
+
+async function unirseGrupo(){
+  const codigo=$('ug-codigo').value.trim().toUpperCase();
+  if(!codigo){alert('Ingresá el código');return;}
+  const errEl=$('ug-error');
+  try{
+    const{data:grupo,error}=await sb.from('grupos').select('*').eq('codigo',codigo).eq('activo',true).single();
+    if(error||!grupo){errEl.textContent='Código incorrecto o expirado';errEl.style.display='';return;}
+    // Verificar si ya es miembro
+    const{data:yaEsMiembro}=await sb.from('miembros_grupo').select('id').eq('grupo_id',grupo.id).eq('user_id',CURRENT_USER.id).single();
+    if(yaEsMiembro){errEl.textContent='Ya sos miembro de este grupo';errEl.style.display='';return;}
+    // Unirse
+    await sb.from('miembros_grupo').insert({grupo_id:grupo.id,user_id:CURRENT_USER.id,nombre_display:PERFIL.nombre||'Usuario'});
+    cerrar('m-unirse-grupo');
+    GRUPOS_CACHE.push(grupo);
+    GRUPO_ACTUAL=grupo;
+    toast(`¡Te uniste a "${grupo.nombre}"!`);
+    abrirGrupo(grupo.id);
+  }catch(e){errEl.textContent='Error al unirse';errEl.style.display='';console.error(e);}
+}
+
+function compartirCodigo(){
+  if(!GRUPO_ACTUAL)return;
+  const texto=`Te invito al grupo "${GRUPO_ACTUAL.nombre}" en Clara. Usá el código: ${GRUPO_ACTUAL.codigo}\n\nDescargá Clara: https://aguilarteandreina0927-collab.github.io/clara/clara.html`;
+  if(navigator.share){
+    navigator.share({title:'Invitación a grupo Clara',text:texto});
+  }else{
+    navigator.clipboard.writeText(texto).then(()=>toast('Código copiado al portapapeles ✓'));
+  }
+}
+
+function abrirModalGastoGrupo(){
+  $('gg-desc').value='';$('gg-monto').value='';$('gg-fecha').value=new Date().toISOString().slice(0,10);
+  calcDivGrupo();abrir('m-gasto-grupo');
+}
+
+function calcDivGrupo(){
+  const monto=parseFloat($('gg-monto')?.value)||0;
+  const miembros=MIEMBROS_CACHE[GRUPO_ACTUAL?.id]||[];
+  const n=miembros.length||1;
+  const porPers=Math.round(monto/n);
+  $('gg-division').innerHTML=miembros.map(m=>{
+    // Get nombre from perfiles cache
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12.5px">
+      <span>${m.user_id===CURRENT_USER.id?'Vos':m.nombre_display||'Usuario'}</span>
+      <input data-uid="${m.user_id}" type="number" value="${porPers}" style="width:100px;text-align:right;font-family:var(--mono);padding:3px 6px;border:1px solid var(--border);border-radius:4px">
+    </div>`;
+  }).join('');
+}
+
+async function guardarGastoGrupo(){
+  const desc=$('gg-desc').value.trim();
+  const monto=parseFloat($('gg-monto').value)||0;
+  const fecha=$('gg-fecha').value;
+  const cat=$('gg-cat').value;
+  const pagadorId=$('gg-pagador').value;
+  if(!desc||!monto||!fecha){alert('Completá descripción, monto y fecha');return;}
+  // Build division
+  const division={};
+  document.querySelectorAll('#gg-division input[data-uid]').forEach(inp=>{
+    const v=parseFloat(inp.value)||0;
+    if(v>0)division[inp.dataset.uid]=v;
   });
-  // Net balance
-  const neto=elMeDebe-yoLeDebo;
-  return{yoLeDebo,elMeDebe,neto,gastos};
+  try{
+    await sb.from('gastos_grupo').insert({
+      grupo_id:GRUPO_ACTUAL.id,pagado_por:pagadorId,
+      descripcion:desc,monto,fecha,cat,division
+    });
+    cerrar('m-gasto-grupo');renderGrupoDetalle();toast('Gasto agregado ✓');
+  }catch(e){alert('Error guardando gasto');console.error(e);}
 }
 
-function renderCompartido(){
-  const mk=mesKey(MES,ANIO);
-  $('comp-mes-lbl').textContent=MESES[MES]+' '+ANIO;
-  const nombre=PERFIL.pareja_nombre||'él/ella';
-  const{yoLeDebo,elMeDebe,neto,gastos}=calcBalance(mk);
-  const saldes=getSaldes().filter(s=>s.mes===mk);
-
-  // Balance card
-  const saldoNeto=neto-saldes.reduce((s,x)=>s+(x.quien==='yo'?-x.monto:x.monto),0);
-  $('comp-balance').innerHTML=`
-    <div class="card" style="background:${saldoNeto>0?'var(--green-bg)':saldoNeto<0?'var(--red-bg)':'var(--bg)'}">
-      <div style="text-align:center;padding:8px 0">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Balance del mes</div>
-        ${saldoNeto===0?`<div style="font-family:var(--serif);font-size:22px;color:var(--green)">✓ Están en cero</div>`
-          :saldoNeto>0?`<div style="font-family:var(--serif);font-size:13px;color:var(--muted)">${nombre} te debe</div>
-            <div style="font-family:var(--serif);font-size:28px;color:var(--green)">${fmt(saldoNeto)}</div>`
-          :`<div style="font-family:var(--serif);font-size:13px;color:var(--muted)">Vos le debés a ${nombre}</div>
-            <div style="font-family:var(--serif);font-size:28px;color:var(--red)">${fmt(Math.abs(saldoNeto))}</div>`}
-      </div>
-      ${saldoNeto!==0?`<div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between">
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10.5px;color:var(--muted)">Vos pusiste</div>
-          <div style="font-family:var(--mono);font-size:13px">${fmt(gastos.filter(g=>g.cuenta==='yo').reduce((s,g)=>s+g.monto,0))}</div>
-        </div>
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10.5px;color:var(--muted)">${nombre} puso</div>
-          <div style="font-family:var(--mono);font-size:13px">${fmt(gastos.filter(g=>g.cuenta==='el').reduce((s,g)=>s+g.monto,0))}</div>
-        </div>
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10.5px;color:var(--muted)">Total compartido</div>
-          <div style="font-family:var(--mono);font-size:13px">${fmt(gastos.reduce((s,g)=>s+g.monto,0))}</div>
-        </div>
-      </div>
-      <button onclick="registrarSalde('${mk}')" style="width:100%;margin-top:10px;padding:8px;background:var(--ink);color:#fff;border:none;border-radius:var(--rs);font-family:var(--sans);font-size:12.5px;cursor:pointer">
-        ${saldoNeto>0?`✓ ${nombre} me pagó — saldar`:`✓ Le pagué a ${nombre} — saldar`}
-      </button>`:''}
-    </div>`;
-
-  // Lista de gastos
-  $('comp-lista').innerHTML=gastos.length?gastos.map(g=>{
-    const div=g.division||calcShares(g.monto,'50/50',50);
-    const pagador=g.cuenta==='yo'?'Vos':nombre;
-    return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <div style="font-size:13px;font-weight:500">${g.descripcion}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">
-          ${CATS[g.cat]||'📦'} ${g.cat} · ${g.fecha} · Pagó: ${pagador}
-        </div>
-        <div style="font-size:11px;margin-top:3px">
-          <span style="color:var(--green)">Vos: ${fmt(div.yo)}</span>
-          <span style="color:var(--muted)"> · </span>
-          <span style="color:var(--blue)">${nombre}: ${fmt(div.el)}</span>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:var(--mono);font-size:13px;font-weight:500">${fmt(g.monto)}</div>
-        <button onclick="editarGasto(${g.id})" class="btn-ghost" style="font-size:11px;margin-top:4px">✏</button>
-        <button onclick="eliminarGasto(${g.id})" class="btn-ghost" style="font-size:11px">🗑</button>
-      </div>
-    </div>`;
-  }).join(''):`<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin gastos compartidos este mes.<br>Al agregar un gasto marcá "🤝 Gasto compartido".</div>`;
-
-  // Saldes
-  const saldesAll=getSaldes().sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,10);
-  $('comp-saldes').innerHTML=saldesAll.length?saldesAll.map(s=>`
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
-      <div>
-        <span style="color:var(--muted)">${s.fecha}</span>
-        <span style="margin-left:8px">${s.quien==='yo'?`Vos le pagaste a ${nombre}`:`${nombre} te pagó`}</span>
-      </div>
-      <span style="font-family:var(--mono);color:var(--green)">${fmt(s.monto)}</span>
-    </div>`).join(''):`<div style="padding:16px 0;font-size:12.5px;color:var(--muted)">Sin saldes registrados</div>`;
+async function eliminarGastoGrupo(id){
+  if(!confirm('¿Eliminar este gasto?'))return;
+  await sb.from('gastos_grupo').delete().eq('id',id);
+  renderGrupoDetalle();toast('Gasto eliminado');
 }
 
-function registrarSalde(mk){
-  const{neto}=calcBalance(mk);
-  const saldes=getSaldes();
-  const prevSaldes=saldes.filter(s=>s.mes===mk).reduce((s,x)=>s+(x.quien==='yo'?-x.monto:x.monto),0);
-  const pendiente=neto-prevSaldes;
-  if(pendiente===0){alert('Ya están en cero este mes');return;}
-  const quien=pendiente>0?'el':'yo'; // quien paga
-  const monto=Math.abs(pendiente);
-  if(!confirm(`¿Confirmar salde de ${fmt(monto)}?`))return;
-  saldes.unshift({id:Date.now(),mes:mk,quien,monto,fecha:new Date().toISOString().slice(0,10)});
-  saveSaldes(saldes);renderCompartido();
+async function saldarConUsuario(uid,nombre,monto){
+  if(!confirm(`¿Confirmar salde de ${fmt(monto)} con ${nombre}?`))return;
+  try{
+    await sb.from('saldes_grupo').insert({
+      grupo_id:GRUPO_ACTUAL.id,
+      pagado_por:CURRENT_USER.id,
+      pagado_a:uid,
+      monto,
+      fecha:new Date().toISOString().slice(0,10)
+    });
+    renderGrupoDetalle();toast('Salde registrado ✓');
+  }catch(e){alert('Error registrando salde');console.error(e);}
+}
+
+function toast(msg){
   const t=document.createElement('div');
-  t.textContent='✓ Salde registrado';
-  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;font-family:var(--sans)';
-  document.body.appendChild(t);setTimeout(()=>t.remove(),2000);
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;font-family:var(--sans);white-space:nowrap';
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
 }
 
 // ── GASTOS PAGE ─────────────────────────────────────
