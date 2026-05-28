@@ -3460,20 +3460,23 @@ async function crearGrupo(){
   const emoji=$('ng-emoji').value.trim()||'👥';
   if(!nombre){alert('Ingresá un nombre');return;}
   try{
-    // Generar código único
-    const{data:codigoData}=await sb.rpc('generar_codigo_grupo');
-    const codigo=codigoData||('CLARA-'+Math.random().toString(36).slice(2,6).toUpperCase());
+    // Generar código único client-side
+    const codigo='CLARA-'+Math.random().toString(36).slice(2,6).toUpperCase();
     // Crear grupo
     const{data:grupo,error}=await sb.from('grupos').insert({nombre,emoji,codigo,creado_por:CURRENT_USER.id}).select().single();
     if(error)throw error;
     // Unirse como miembro
-    await sb.from('miembros_grupo').insert({grupo_id:grupo.id,user_id:CURRENT_USER.id,nombre_display:PERFIL.nombre||'Yo'});
+    const{error:e2}=await sb.from('miembros_grupo').insert({grupo_id:grupo.id,user_id:CURRENT_USER.id,nombre_display:PERFIL.nombre||'Yo'});
+    if(e2)throw e2;
     cerrar('m-crear-grupo');
     GRUPOS_CACHE.push(grupo);
     GRUPO_ACTUAL=grupo;
     toast(`Grupo "${nombre}" creado · Código: ${codigo}`);
     abrirGrupo(grupo.id);
-  }catch(e){alert('Error creando grupo');console.error(e);}
+  }catch(e){
+    console.error('Error creando grupo:',e);
+    alert('Error: '+(e.message||JSON.stringify(e)));
+  }
 }
 
 async function unirseGrupo(){
