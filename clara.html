@@ -3367,10 +3367,11 @@ async function renderGrupoDetalle(){
     const{data:miembros}=await sb.from('miembros_grupo').select('*').eq('grupo_id',g.id);
     MIEMBROS_CACHE[g.id]=miembros||[];
 
-    // Cargar perfiles de miembros
+    // Usar nombre_display directamente de miembros_grupo
+    const nombrePorId={};
+    (miembros||[]).forEach(m=>{nombrePorId[m.user_id]=m.nombre_display||'Usuario';});
+
     const uids=(miembros||[]).map(m=>m.user_id);
-    const{data:perfs}=await sb.from('perfiles').select('id,nombre').in('id',uids);
-    const nombrePorId={};(perfs||[]).forEach(p=>{nombrePorId[p.id]=p.nombre||'Usuario';});
 
     // Render miembros
     $('gd-miembros').innerHTML=(miembros||[]).map(m=>`
