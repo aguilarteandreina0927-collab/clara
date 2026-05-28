@@ -121,6 +121,7 @@ tr:last-child td{border-bottom:none}
   .sfoot{display:none}
   .main{padding:14px 12px 24px;margin-left:56px;flex:1;min-width:0;overflow-x:hidden}
   .sidebar:hover~.main,.sidebar.expanded~.main{margin-left:200px}
+  #mobile-perfil-btn{display:block}
 
   /* Typography */
   .pt{font-size:20px}
@@ -239,6 +240,10 @@ tr:last-child td{border-bottom:none}
   </aside>
 
   <main class="main">
+  <!-- PERFIL MÓVIL — esquina superior derecha -->
+  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:10px;right:12px;z-index:40">
+    <button onclick="abrirPerfil()" style="width:36px;height:36px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)">👤</button>
+  </div>
 
   <!-- INICIO -->
   <div class="page on" id="page-inicio">
@@ -510,7 +515,7 @@ tr:last-child td{border-bottom:none}
   <!-- ESTADÍSTICAS -->
   <div class="page" id="page-estadisticas">
     <div class="tb">
-      <div><div class="pt">Estadísticas</div><div class="ps">Tu historial financiero de un vistazo</div></div>
+      <div><div class="pt">Estadísticas</div><div class="ps">Tu historial financiero completo</div></div>
       <div class="tb-r">
         <select id="est-anio" onchange="renderEstadisticas()" style="font-family:var(--sans);font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--white)">
           <option value="2026">2026</option>
@@ -520,24 +525,25 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
-    <!-- Ranking rápido -->
+    <!-- KPIs anuales -->
     <div class="g3" id="est-ranking" style="margin-bottom:20px"></div>
 
-    <!-- Resumen anual -->
-    <div id="est-resumen-anio" style="margin-bottom:16px"></div>
-
-    <!-- Gráfico ingresos vs gastos -->
+    <!-- Ingresos vs Gastos vs Ahorro -->
     <div class="card" style="margin-bottom:16px">
-      <div class="ct">Ingresos vs Gastos — mes a mes</div>
+      <div class="ct">Ingresos · Gastos · Ahorro — mes a mes</div>
       <div id="est-chart-barras" style="overflow-x:auto;padding-bottom:8px"></div>
+      <div style="display:flex;gap:14px;margin-top:10px;justify-content:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:12px;height:12px;background:var(--green);border-radius:2px;opacity:.85"></div>Ingresos</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:12px;height:12px;background:var(--red);border-radius:2px;opacity:.75"></div>Gastos</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:12px;height:12px;background:#4A90D9;border-radius:2px;opacity:.85"></div>Ahorro</div>
+      </div>
     </div>
 
-    <!-- Torta + barras categorías -->
+    <!-- Gastos por categoría -->
     <div class="g2" style="margin-bottom:16px">
       <div class="card">
         <div class="ct">En qué gastaste más</div>
         <div id="est-torta" style="display:flex;align-items:center;gap:16px"></div>
-        <div id="est-torta-nota"></div>
       </div>
       <div class="card">
         <div class="ct">Gastos por categoría <span id="est-cat-anio" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--sans)"></span></div>
@@ -555,6 +561,18 @@ tr:last-child td{border-bottom:none}
         </select>
       </div>
       <div id="est-cat-evol"></div>
+    </div>
+
+    <!-- Metas -->
+    <div class="card" style="margin-bottom:16px" id="est-metas-section">
+      <div class="ct">Progreso de metas de ahorro</div>
+      <div id="est-metas"></div>
+    </div>
+
+    <!-- Inversiones -->
+    <div class="card" style="margin-bottom:16px" id="est-inv-section">
+      <div class="ct">Portfolio de inversiones</div>
+      <div id="est-inversiones"></div>
     </div>
 
     <!-- Gastos compartidos -->
@@ -1519,31 +1537,49 @@ function abrirModalDeuda(id){
   $('md-cuota').value=d?.cuota||'';$('md-dia-pago').value=d?.dia_pago||'';$('md-interes').value=d?.interes||'';$('md-notas').value=d?.notas||'';abrir('m-deuda');
 }
 function editarDeuda(id){abrirModalDeuda(id);}
-function guardarDeuda(){
-  const id=$('md-id').value;const existing=id?S.deudas.find(x=>x.id===parseInt(id)):null;
-  const data={id:id?parseInt(id):Date.now(),nombre:$('md-nombre').value.trim(),tipo:$('md-tipo').value,
+async function guardarDeuda(){
+  const id=$('md-id').value;const existing=id?S.deudas.find(x=>String(x.id)===String(id)):null;
+  const data={nombre:$('md-nombre').value.trim(),tipo:$('md-tipo').value,
     titular:$('md-titular').value,moneda:$('md-moneda').value,monto_original:parseFloat($('md-monto').value)||0,
-    cuota:parseFloat($('md-cuota').value)||0,dia_pago:parseInt($('md-dia-pago').value)||null,interes:parseFloat($('md-interes').value)||0,
-    notas:$('md-notas').value,fecha_creacion:new Date().toISOString().slice(0,10),pagos:existing?.pagos||[]};
+    cuota_mensual:parseFloat($('md-cuota').value)||0,interes:parseFloat($('md-interes').value)||0,
+    notas:$('md-notas').value,fecha_creacion:new Date().toISOString().slice(0,10)};
   if(!data.nombre||!data.monto_original){alert('Completá nombre y monto');return;}
-  if(id){const idx=S.deudas.findIndex(x=>x.id===parseInt(id));if(idx>=0)S.deudas[idx]=data;}
-  else S.deudas.push(data);
-  save();cerrar('m-deuda');renderDeudas();
+  try{
+    if(id){
+      await sb.from('deudas').update(data).eq('id',id).eq('user_id',CURRENT_USER.id);
+      const idx=S.deudas.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0)S.deudas[idx]={...S.deudas[idx],...data};
+    }else{
+      const{data:row,error}=await sb.from('deudas').insert({...data,user_id:CURRENT_USER.id}).select().single();
+      if(error)throw error;
+      S.deudas.push({...data,...row,pagos:[]});
+    }
+    _saveLocalOnly();cerrar('m-deuda');renderDeudas();
+  }catch(e){alert('Error guardando deuda');console.error(e);}
 }
-function eliminarDeuda(id){
-  if(!confirm('¿Eliminar?'))return;S.deudas=S.deudas.filter(x=>String(x.id)!==String(id));save();renderDeudas();
+async function eliminarDeuda(id){
+  if(!confirm('¿Eliminar?'))return;
+  try{
+    await sb.from('deudas').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+    S.deudas=S.deudas.filter(x=>String(x.id)!==String(id));
+    _saveLocalOnly();renderDeudas();
+  }catch(e){alert('Error eliminando');console.error(e);}
 }
 function abrirPago(id){
-  const d=S.deudas.find(x=>x.id===id);if(!d)return;
-  $('mpd-id').value=id;$('mpd-sub').textContent=d.nombre+' · Saldo: '+(d.moneda==='USD'?fmtUSD(calcSaldo(d)):fmt(calcSaldo(d)));
-  $('mpd-monto').value=d.cuota||'';$('mpd-fecha').value=new Date().toISOString().slice(0,10);$('mpd-nota').value='';abrir('m-pago');
+  const d=S.deudas.find(x=>x.id===id||String(x.id)===String(id));if(!d)return;
+  $('mpd-id').value=d.id;$('mpd-sub').textContent=d.nombre+' · Saldo: '+(d.moneda==='USD'?fmtUSD(calcSaldo(d)):fmt(calcSaldo(d)));
+  $('mpd-monto').value=d.cuota_mensual||d.cuota||'';$('mpd-fecha').value=new Date().toISOString().slice(0,10);$('mpd-nota').value='';abrir('m-pago');
 }
-function guardarPago(){
-  const id=parseInt($('mpd-id').value);const d=S.deudas.find(x=>x.id===id);if(!d)return;
+async function guardarPago(){
+  const id=$('mpd-id').value;const d=S.deudas.find(x=>String(x.id)===String(id));if(!d)return;
   const monto=parseFloat($('mpd-monto').value)||0;const fecha=$('mpd-fecha').value;const nota=$('mpd-nota').value;
   if(!monto){alert('Ingresá el monto');return;}
-  d.pagos=d.pagos||[];d.pagos.push({id:Date.now(),monto,fecha,nota});
-  save();cerrar('m-pago');renderDeudas();
+  try{
+    const{data:row,error}=await sb.from('pagos_deuda').insert({deuda_id:parseInt(id)||id,monto,fecha,nota,user_id:CURRENT_USER.id}).select().single();
+    if(error)throw error;
+    d.pagos=d.pagos||[];d.pagos.push({...row});
+    _saveLocalOnly();cerrar('m-pago');renderDeudas();
+  }catch(e){alert('Error guardando pago');console.error(e);}
 }
 
 // ── METAS ──────────────────────────────────────────
@@ -1572,25 +1608,36 @@ function abrirModalMeta(id){
   $('mm-nombre').value=m?.nombre||'';$('mm-obj').value=m?.objetivo||'';$('mm-color').value=m?.color||'green';abrir('m-meta');
 }
 function editarMeta(id){abrirModalMeta(id);}
-function guardarMeta(){
-  const id=$('mm-id').value;const m=id?S.metas.find(x=>x.id===parseInt(id)):null;
-  const data={id:id?parseInt(id):Date.now(),nombre:$('mm-nombre').value.trim(),objetivo:parseFloat($('mm-obj').value)||0,color:$('mm-color').value,acumulado:m?.acumulado||0};
+async function guardarMeta(){
+  const id=$('mm-id').value;const m=id?S.metas.find(x=>String(x.id)===String(id)):null;
+  const data={nombre:$('mm-nombre').value.trim(),objetivo:parseFloat($('mm-obj').value)||0,color:$('mm-color').value,acumulado:m?.acumulado||0};
   if(!data.nombre||!data.objetivo){alert('Completá nombre y objetivo');return;}
-  if(id){const idx=S.metas.findIndex(x=>x.id===parseInt(id));if(idx>=0)S.metas[idx]=data;}
-  else S.metas.push(data);
-  save();cerrar('m-meta');renderMetas();
+  try{
+    if(id){
+      await sb.from('metas').update(data).eq('id',id).eq('user_id',CURRENT_USER.id);
+      const idx=S.metas.findIndex(x=>String(x.id)===String(id));if(idx>=0)S.metas[idx]={...S.metas[idx],...data};
+    }else{
+      const{data:row,error}=await sb.from('metas').insert({...data,user_id:CURRENT_USER.id}).select().single();
+      if(error)throw error;S.metas.push({...data,...row});
+    }
+    _saveLocalOnly();cerrar('m-meta');renderMetas();
+  }catch(e){alert('Error guardando meta');console.error(e);}
 }
-function eliminarMeta(id){
-  if(!confirm('¿Eliminar?'))return;S.metas=S.metas.filter(x=>String(x.id)!==String(id));save();renderMetas();
+async function eliminarMeta(id){
+  if(!confirm('¿Eliminar?'))return;
+  try{
+    await sb.from('metas').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+    S.metas=S.metas.filter(x=>String(x.id)!==String(id));_saveLocalOnly();renderMetas();
+  }catch(e){alert('Error eliminando');console.error(e);}
 }
-function abrirAporte(id){
-  const m=S.metas.find(x=>x.id===id);if(!m)return;
-  $('map-id').value=id;$('map-sub').textContent=m.nombre+' · Juntado: '+fmt(m.acumulado);$('map-monto').value='';abrir('m-aporte');
-}
-function guardarAporte(){
-  const id=parseInt($('map-id').value);const m=S.metas.find(x=>x.id===id);if(!m)return;
+async function guardarAporte(){
+  const id=$('map-id').value;const m=S.metas.find(x=>String(x.id)===String(id));if(!m)return;
   const monto=parseFloat($('map-monto').value)||0;if(!monto){alert('Ingresá el monto');return;}
-  m.acumulado=(m.acumulado||0)+monto;save();cerrar('m-aporte');renderMetas();
+  m.acumulado=(m.acumulado||0)+monto;
+  try{
+    await sb.from('metas').update({acumulado:m.acumulado}).eq('id',id).eq('user_id',CURRENT_USER.id);
+    _saveLocalOnly();cerrar('m-aporte');renderMetas();
+  }catch(e){alert('Error guardando aporte');console.error(e);}
 }
 
 // ── INVERSIONES ────────────────────────────────────
@@ -1774,29 +1821,47 @@ function abrirModalInversion(id){
   abrir('m-inversion');
 }
 function editarInversion(id){abrirModalInversion(id);}
-function guardarInversion(){
+async function guardarInversion(){
   const id=$('minv-id').value;
-  const data={
-    id:id?parseInt(id):Date.now(),
-    nombre:$('minv-nombre').value.trim(),
-    tipo:$('minv-tipo').value,
-    cantidad:parseFloat($('minv-cant').value)||0,
-    compra:parseFloat($('minv-compra').value)||0,
-    actual:parseFloat($('minv-actual').value)||0,
-    moneda:$('minv-mon').value,
-    fecha_compra:$('minv-fecha').value,
-    vencimiento:$('minv-venc').value||null,
-    tasa:parseFloat($('minv-tasa').value)||null,
-    notas:$('minv-notas').value.trim()
-  };
+  const data={nombre:$('minv-nombre').value.trim(),tipo:$('minv-tipo').value,
+    cantidad:parseFloat($('minv-cant').value)||0,compra:parseFloat($('minv-compra').value)||0,
+    actual:parseFloat($('minv-actual').value)||0,moneda:$('minv-mon').value,
+    fecha:$('minv-fecha').value,vencimiento:$('minv-venc').value||null,
+    tasa:parseFloat($('minv-tasa').value)||null,notas:$('minv-notas').value.trim()};
   if(!data.nombre||!data.cantidad||!data.compra){alert('Completá nombre, cantidad y precio de compra');return;}
   if(!data.actual)data.actual=data.compra;
-  if(id){const idx=S.inversiones.findIndex(x=>x.id===parseInt(id));if(idx>=0)S.inversiones[idx]=data;}
-  else S.inversiones.push(data);
-  save();cerrar('m-inversion');renderInversiones();
+  try{
+    if(id){
+      await sb.from('inversiones').update(data).eq('id',id).eq('user_id',CURRENT_USER.id);
+      const idx=S.inversiones.findIndex(x=>String(x.id)===String(id));if(idx>=0)S.inversiones[idx]={...S.inversiones[idx],...data};
+    }else{
+      const{data:row,error}=await sb.from('inversiones').insert({...data,user_id:CURRENT_USER.id}).select().single();
+      if(error)throw error;S.inversiones.push({...data,...row});
+    }
+    _saveLocalOnly();cerrar('m-inversion');renderInversiones();
+  }catch(e){alert('Error guardando inversión');console.error(e);}
 }
-function eliminarInversion(id){
-  if(!confirm('¿Eliminar?'))return;S.inversiones=S.inversiones.filter(x=>String(x.id)!==String(id));save();renderInversiones();
+async function eliminarInversion(id){
+  if(!confirm('¿Eliminar?'))return;
+  try{
+    await sb.from('inversiones').delete().eq('id',id).eq('user_id',CURRENT_USER.id);
+    S.inversiones=S.inversiones.filter(x=>String(x.id)!==String(id));_saveLocalOnly();renderInversiones();
+  }catch(e){alert('Error eliminando');console.error(e);}
+}
+
+// ── LÍMITE DE FOTOS ─────────────────────────────────
+const FOTO_LIMIT=10;
+async function checkFotoLimit(){
+  if(!CURRENT_USER)return true;
+  const mes=new Date().toISOString().slice(0,7);
+  const key='clara_fotos_'+mes+'_'+CURRENT_USER.id;
+  const usado=parseInt(localStorage.getItem(key)||'0');
+  if(usado>=FOTO_LIMIT){
+    alert(`Llegaste al límite de ${FOTO_LIMIT} fotos por mes. Se renueva el 1 del mes que viene.`);
+    return false;
+  }
+  localStorage.setItem(key,String(usado+1));
+  return true;
 }
 
 // ── PROYECCIÓN ─────────────────────────────────────
@@ -2010,34 +2075,28 @@ function renderEstadisticas(){
       </div>`;
   } else if(resumenAnioEl){resumenAnioEl.innerHTML='';}
 
-  // ── GRÁFICO BARRAS ──
-  const maxVal=Math.max(...meses.map(m=>Math.max(m.ing,m.egr)),1);
+  // ── GRÁFICO BARRAS con ahorro ──
+  const maxVal=Math.max(...meses.map(m=>Math.max(m.ing,m.egr,Math.abs(m.ahorro))),1);
   const barH=160;
   $('est-chart-barras').innerHTML=conDatos.length?`
-    <div style="display:flex;align-items:flex-end;gap:6px;min-width:${meses.length*60}px;padding:10px 0 0">
+    <div style="overflow-x:auto">
+    <div style="display:flex;align-items:flex-end;gap:4px;min-width:${meses.length*56}px;padding:10px 0 0">
       ${meses.map(m=>{
         const iH=Math.round(m.ing/maxVal*barH);
         const eH=Math.round(m.egr/maxVal*barH);
-        const ahColor=m.ahorro>=0?'var(--green)':'var(--red)';
-        return`<div style="flex:1;min-width:48px;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="font-size:9px;color:${ahColor};font-family:var(--mono);font-weight:600">${m.ing>0||m.egr>0?(m.ahorro>=0?'+':'')+fmt(m.ahorro).replace('$',''):''}</div>
-          <div style="display:flex;align-items:flex-end;gap:2px;height:${barH}px">
-            <div style="width:18px;height:${iH}px;background:var(--green);border-radius:3px 3px 0 0;opacity:.85" title="Ingresos: ${fmt(m.ing)}"></div>
-            <div style="width:18px;height:${eH}px;background:var(--red);border-radius:3px 3px 0 0;opacity:.75" title="Gastos: ${fmt(m.egr)}"></div>
+        const aH=Math.round(Math.abs(m.ahorro)/maxVal*barH);
+        const ahColor=m.ahorro>=0?'#4A90D9':'var(--red)';
+        return`<div style="flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font-size:8px;color:${m.ahorro>=0?'#4A90D9':'var(--red)'};font-family:var(--mono);font-weight:600;white-space:nowrap">${m.ing>0||m.egr>0?(m.ahorro>=0?'+':'-')+fmt(Math.abs(m.ahorro)).replace('$',''):''}</div>
+          <div style="display:flex;align-items:flex-end;gap:1px;height:${barH}px">
+            <div style="width:14px;height:${iH}px;background:var(--green);border-radius:3px 3px 0 0;opacity:.85" title="Ingresos: ${fmt(m.ing)}"></div>
+            <div style="width:14px;height:${eH}px;background:var(--red);border-radius:3px 3px 0 0;opacity:.75" title="Gastos: ${fmt(m.egr)}"></div>
+            <div style="width:14px;height:${aH}px;background:${ahColor};border-radius:3px 3px 0 0;opacity:.85" title="Ahorro: ${fmt(m.ahorro)}"></div>
           </div>
-          <div style="font-size:10px;color:var(--muted);font-weight:500">${m.label}</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:500">${m.label}</div>
         </div>`;
       }).join('')}
-    </div>
-    <div style="display:flex;gap:16px;margin-top:12px;justify-content:center;flex-wrap:wrap;align-items:center">
-      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
-        <div style="width:12px;height:12px;background:var(--green);border-radius:2px;opacity:.85"></div>Ingresos
-      </div>
-      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
-        <div style="width:12px;height:12px;background:var(--red);border-radius:2px;opacity:.75"></div>Gastos
-      </div>
-      <div style="font-size:11px;color:var(--muted)">· El número sobre cada barra es el ahorro del mes (+&nbsp;sobró / −&nbsp;faltó)</div>
-    </div>`
+    </div></div>`
   :`<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Sin datos para ${anio}. Cargá ingresos y gastos para ver el gráfico.</div>`;
 
   // ── GASTOS POR CATEGORÍA con comparativa ──
@@ -2107,6 +2166,56 @@ function renderEstadisticas(){
   }).join(''):`<div style="padding:20px 0;font-size:12.5px;color:var(--muted)">Sin gastos en ${anio}</div>`;
 
   renderEvolucionCat();
+
+  // ── METAS ──
+  const metasEl=document.getElementById('est-metas');
+  const metasSection=document.getElementById('est-metas-section');
+  if(metasEl&&S.metas?.length){
+    if(metasSection)metasSection.style.display='';
+    metasEl.innerHTML=S.metas.map(m=>{
+      const pct=m.objetivo>0?Math.min(100,Math.round(m.acumulado/m.objetivo*100)):0;
+      const falta=Math.max(0,m.objetivo-m.acumulado);
+      const colorM=COLORS[m.color]||'var(--green)';
+      return`<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:500">${m.nombre}</span>
+          <span style="font-size:12px;font-family:var(--mono);color:${colorM}">${pct}% — ${fmt(m.acumulado)} de ${fmt(m.objetivo)}</span>
+        </div>
+        <div class="pb"><div class="pf" style="width:${pct}%;background:${colorM}"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">${falta>0?`Falta ${fmt(falta)}`:'✓ Meta alcanzada'}</div>
+      </div>`;
+    }).join('');
+  }else if(metasSection){metasSection.style.display='none';}
+
+  // ── INVERSIONES ──
+  const invEl=document.getElementById('est-inversiones');
+  const invSection=document.getElementById('est-inv-section');
+  if(invEl&&S.inversiones?.length){
+    if(invSection)invSection.style.display='';
+    const totalInvertido=S.inversiones.reduce((s,i)=>s+(i.compra*i.cantidad),0);
+    const totalActual=S.inversiones.reduce((s,i)=>s+(i.actual*i.cantidad),0);
+    const rendTotal=totalInvertido>0?Math.round((totalActual-totalInvertido)/totalInvertido*100):0;
+    invEl.innerHTML=`
+      <div class="g3" style="margin-bottom:14px">
+        <div class="stat"><div class="sl">Invertido total</div><div class="sv">${fmt(totalInvertido)}</div></div>
+        <div class="stat"><div class="sl">Valor actual</div><div class="sv ${totalActual>=totalInvertido?'green':'red'}">${fmt(totalActual)}</div></div>
+        <div class="stat"><div class="sl">Rendimiento</div><div class="sv ${rendTotal>=0?'green':'red'}">${rendTotal>=0?'+':''}${rendTotal}%</div></div>
+      </div>
+      ${S.inversiones.map(i=>{
+        const valorActual=i.actual*i.cantidad;const costo=i.compra*i.cantidad;
+        const rend=costo>0?Math.round((valorActual-costo)/costo*100):0;
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:500">${i.nombre}</div>
+            <div style="font-size:11px;color:var(--muted)">${i.tipo} · ${i.cantidad} unidades</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:var(--mono);font-size:13px">${fmt(valorActual)}</div>
+            <div style="font-size:11px;color:${rend>=0?'var(--green)':'var(--red)'}">${rend>=0?'+':''}${rend}%</div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }else if(invSection){invSection.style.display='none';}
 
   // ── GASTOS COMPARTIDOS ──
   const gastosComp=S.gastos.filter(g=>g.compartido&&g.mes?.startsWith(String(anio)));
@@ -2966,6 +3075,8 @@ async function guardarRapido(){
 // ── FOTO TICKET CON IA ──────────────────────────────
 async function procesarTicket(input){
   const file=input.files[0];if(!file)return;
+  // Check limit
+  if(!(await checkFotoLimit()))return;
   const st=$('mr-ia-status');const lbl=$('mr-foto-lbl');
   lbl.textContent=file.name;st.style.display='';st.textContent='Analizando ticket con IA...';st.style.color='var(--muted)';
   const base64=await new Promise((res,rej)=>{
