@@ -1,10 +1,6 @@
-const CACHE='clara-v1';
-const ASSETS=['/clara/','clara.html','index.html'];
+const CACHE='clara-v3';
 
 self.addEventListener('install',e=>{
-  e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll(ASSETS).catch(()=>{}))
-  );
   self.skipWaiting();
 });
 
@@ -18,20 +14,30 @@ self.addEventListener('activate',e=>{
 });
 
 self.addEventListener('fetch',e=>{
-  // Solo cachear requests GET del mismo origen
   if(e.request.method!=='GET')return;
-  if(!e.request.url.startsWith(self.location.origin))return;
-
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      // Intentar red primero, caer en caché si falla
-      return fetch(e.request).then(res=>{
-        if(res&&res.status===200){
+  
+  const url=new URL(e.request.url);
+  
+  // El HTML siempre se busca en la red primero
+  if(url.pathname.endsWith('.html')||url.pathname.endsWith('/')){
+    e.respondWith(
+      fetch(e.request).catch(()=>caches.match(e.request))
+    );
+    return;
+  }
+  
+  // Fonts y assets — caché primero
+  if(url.hostname.includes('googleapis')||url.hostname.includes('gstatic')){
+    e.respondWith(
+      caches.match(e.request).then(cached=>{
+        if(cached)return cached;
+        return fetch(e.request).then(res=>{
           const copy=res.clone();
           caches.open(CACHE).then(c=>c.put(e.request,copy));
-        }
-        return res;
-      }).catch(()=>cached);
-    })
-  );
+          return res;
+        });
+      })
+    );
+    return;
+  }
 });
