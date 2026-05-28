@@ -2925,7 +2925,7 @@ function abrirCargaRapida(){
   $('mr-foto-lbl').textContent='Subir foto del ticket (opcional)';
   const cats=Object.entries(CATS);
   $('mr-cats').innerHTML=cats.map(([cat,ic])=>`
-    <button onclick="selCatRapida('${cat}',this)" class="btn btn-sec btn-sm" style="font-size:11px;padding:4px 10px;${cat===mrCatSel?'background:var(--green);color:#fff;border-color:var(--green)':''}">${ic} ${cat}</button>`
+    <button data-cat="${cat}" onclick="selCatRapida('${cat}',this)" class="btn btn-sec btn-sm" style="font-size:11px;padding:4px 10px;${cat===mrCatSel?'background:var(--green);color:#fff;border-color:var(--green)':''}">${ic} ${cat}</button>`
   ).join('');
   abrir('m-rapido');
   setTimeout(()=>$('mr-monto').focus(),100);
@@ -2983,15 +2983,25 @@ async function procesarTicket(input){
     });
     const parsed=await resp.json();
     if(parsed.error){st.textContent='Error: '+parsed.error;st.style.color='var(--red)';return;}
-    if(parsed.monto){$('mr-monto').value=parsed.monto;prevRapido();}
+    if(parsed.monto){
+      $('mr-monto').value=Math.round(parsed.monto);
+      prevRapido();
+    }
     if(parsed.descripcion)$('mr-desc').value=parsed.descripcion;
-    if(parsed.cat&&CATS[parsed.cat]){
-      mrCatSel=parsed.cat;
-      document.querySelectorAll('#mr-cats button').forEach(b=>{
-        const txt=b.textContent.trim().replace(/^\S+\s/,'');
-        if(txt===parsed.cat){b.style.background='var(--green)';b.style.color='#fff';b.style.borderColor='var(--green)';}
-        else{b.style.background='';b.style.color='';b.style.borderColor='';}
-      });
+    if(parsed.cat){
+      // Find best matching category
+      const catKey=Object.keys(CATS).find(k=>k.toLowerCase()===parsed.cat.toLowerCase())||
+                   Object.keys(CATS).find(k=>parsed.cat.toLowerCase().includes(k.toLowerCase()))||
+                   parsed.cat;
+      if(CATS[catKey]){
+        mrCatSel=catKey;
+        document.querySelectorAll('#mr-cats button').forEach(b=>{
+          b.style.background='';b.style.color='';b.style.borderColor='';
+          if(b.dataset.cat===catKey){
+            b.style.background='var(--green)';b.style.color='#fff';b.style.borderColor='var(--green)';
+          }
+        });
+      }
     }
     st.textContent='✓ Datos detectados — revisá y confirmá';st.style.color='var(--green)';
   }catch(e){st.textContent='No pude leer el ticket. Cargá los datos manualmente.';st.style.color='var(--red)';console.error(e);}
