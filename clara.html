@@ -2967,37 +2967,34 @@ async function guardarRapido(){
 async function procesarTicket(input){
   const file=input.files[0];if(!file)return;
   const st=$('mr-ia-status');const lbl=$('mr-foto-lbl');
-  lbl.textContent=file.name;st.style.display='';st.textContent='Analizando ticket con IA...';
+  lbl.textContent=file.name;st.style.display='';st.textContent='Analizando ticket con IA...';st.style.color='var(--muted)';
   const base64=await new Promise((res,rej)=>{
     const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);
   });
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const{data:{session}}=await sb.auth.getSession();
+    const resp=await fetch(SB_URL+'/functions/v1/analizar-ticket',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:300,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
-          {type:'text',text:'Analizá este ticket, comprobante o screenshot de pago. Extraé: monto total final pagado (solo número), nombre del comercio o concepto corto, categoría más apropiada de esta lista: Casa/Comida/Transporte/Auto/Salud/Educación/Entretenimiento/Ropa/Servicios/Otros. Respondé SOLO JSON sin markdown: {"monto":0,"descripcion":"","cat":""}'}
-        ]}]
-      })
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+(session?.access_token||SB_KEY),
+      },
+      body:JSON.stringify({image:base64,mediaType:file.type})
     });
-    const data=await resp.json();
-    const text=data.content?.[0]?.text||'{}';
-    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const parsed=await resp.json();
+    if(parsed.error){st.textContent='Error: '+parsed.error;st.style.color='var(--red)';return;}
     if(parsed.monto){$('mr-monto').value=parsed.monto;prevRapido();}
     if(parsed.descripcion)$('mr-desc').value=parsed.descripcion;
     if(parsed.cat&&CATS[parsed.cat]){
       mrCatSel=parsed.cat;
       document.querySelectorAll('#mr-cats button').forEach(b=>{
-        const c=b.textContent.replace(/[^\w\s]/g,'').trim().split(' ').slice(1).join(' ').trim();
-        if(c===parsed.cat){b.style.background='var(--green)';b.style.color='#fff';b.style.borderColor='var(--green)';}
+        const txt=b.textContent.trim().replace(/^\S+\s/,'');
+        if(txt===parsed.cat){b.style.background='var(--green)';b.style.color='#fff';b.style.borderColor='var(--green)';}
         else{b.style.background='';b.style.color='';b.style.borderColor='';}
       });
     }
     st.textContent='✓ Datos detectados — revisá y confirmá';st.style.color='var(--green)';
-  }catch(e){st.textContent='No pude leer el ticket. Cargá los datos manualmente.';st.style.color='var(--red)';}
+  }catch(e){st.textContent='No pude leer el ticket. Cargá los datos manualmente.';st.style.color='var(--red)';console.error(e);}
 }
 
 // ── LO QUE VIENE (alertas predictivas) ─────────────
