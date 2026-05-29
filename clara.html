@@ -276,8 +276,8 @@ tr:last-child td{border-bottom:none}
 
   <main class="main">
   <!-- PERFIL MÓVIL — esquina superior derecha -->
-  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:10px;right:12px;z-index:40">
-    <button onclick="abrirPerfil()" style="width:36px;height:36px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)">👤</button>
+  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:8px;right:10px;z-index:100">
+    <button onclick="abrirPerfil()" style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)">👤</button>
   </div>
 
   <!-- INICIO -->
@@ -2172,8 +2172,12 @@ function renderEstrategia(){
 
 // ── PERFIL ─────────────────────────────────────────
 function abrirPerfil(){
-  $('p-nombre').value=PERFIL.nombre||'';$('p-modo').value=PERFIL.modo||'personal';
-  $('p-pareja').value=PERFIL.pareja_nombre||'';mostrarOpcionesPareja();abrir('m-perfil');
+  $('p-nombre').value=PERFIL.nombre||'';
+  $('p-modo').value=PERFIL.modo||'personal';
+  $('p-pareja').value=PERFIL.pareja_nombre||'';
+  if($('p-email')&&CURRENT_USER)$('p-email').value=CURRENT_USER.email||'';
+  mostrarOpcionesPareja();
+  abrir('m-perfil');
 }
 function mostrarOpcionesPareja(){$('p-pareja-opts').style.display=($('p-modo')?.value!=='personal')?'':'none';}
 function guardarPerfil(){
