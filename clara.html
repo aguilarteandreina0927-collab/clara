@@ -276,7 +276,7 @@ tr:last-child td{border-bottom:none}
 
   <main class="main">
   <!-- PERFIL MÓVIL — esquina superior derecha -->
-  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:8px;right:10px;z-index:100">
+  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:8px;right:10px;z-index:49">
     <button onclick="abrirPerfil()" style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)">👤</button>
   </div>
 
@@ -2172,12 +2172,16 @@ function renderEstrategia(){
 
 // ── PERFIL ─────────────────────────────────────────
 function abrirPerfil(){
-  $('p-nombre').value=PERFIL.nombre||'';
-  $('p-modo').value=PERFIL.modo||'personal';
-  $('p-pareja').value=PERFIL.pareja_nombre||'';
-  if($('p-email')&&CURRENT_USER)$('p-email').value=CURRENT_USER.email||'';
-  mostrarOpcionesPareja();
-  abrir('m-perfil');
+  try{
+    if($('p-nombre'))$('p-nombre').value=PERFIL.nombre||'';
+    if($('p-modo'))$('p-modo').value=PERFIL.modo||'personal';
+    if($('p-pareja'))$('p-pareja').value=PERFIL.pareja_nombre||'';
+    if($('p-email')&&CURRENT_USER)$('p-email').value=CURRENT_USER.email||'';
+    mostrarOpcionesPareja();
+    const modal=$('m-perfil');
+    if(modal){modal.classList.add('open');}
+    else{alert('Error: modal de perfil no encontrado');}
+  }catch(e){alert('Error al abrir perfil: '+e.message);}
 }
 function mostrarOpcionesPareja(){$('p-pareja-opts').style.display=($('p-modo')?.value!=='personal')?'':'none';}
 function guardarPerfil(){
