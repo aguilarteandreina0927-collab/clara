@@ -186,10 +186,44 @@ tr:last-child td{border-bottom:none}
     <div class="fg" style="margin-bottom:12px"><label>Email</label><input id="auth-email" type="email" placeholder="tu@email.com" autocomplete="email"></div>
     <div class="fg" style="margin-bottom:16px"><label>Contraseña</label><input id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
     <div id="auth-nombre-wrap" style="display:none;margin-bottom:12px"><div class="fg"><label>Tu nombre</label><input id="auth-nombre" type="text" placeholder="Ej: Andreina"></div></div>
+    <div id="auth-terms-wrap" style="display:none;margin-bottom:12px">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);line-height:1.5">
+        <input type="checkbox" id="auth-terms" style="width:15px;height:15px;flex-shrink:0;margin-top:1px">
+        Acepto los <a href="#" onclick="verTerminos(event)" style="color:var(--green);text-decoration:underline">términos y política de privacidad</a>
+      </label>
+    </div>
     <div id="auth-error" style="font-size:12px;color:var(--red);margin-bottom:8px;display:none"></div>
     <button id="auth-btn" onclick="doAuth()" style="width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer">Entrar</button>
     <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--muted)" id="auth-forgot">
       <a href="#" onclick="resetPassword()" style="color:var(--muted)">¿Olvidaste tu contraseña?</a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TÉRMINOS -->
+<div class="ov" id="m-terminos" style="z-index:10000">
+  <div class="modal" style="max-width:460px;max-height:85vh;overflow-y:auto">
+    <div class="mt">🔒 Privacidad en Clara</div>
+    <div style="font-size:13px;line-height:1.8;color:var(--ink)">
+      <div style="margin-bottom:14px"><strong>Qué guardamos</strong><br>
+      Tu nombre, email y los datos financieros que cargás vos — gastos, ingresos, deudas, metas e inversiones.</div>
+      <div style="margin-bottom:14px"><strong>Para qué los usamos</strong><br>
+      Solo para mostrártelos a vos. Nada más.</div>
+      <div style="margin-bottom:14px"><strong>Lo que prometemos</strong></div>
+      <div style="padding:12px 16px;background:var(--green-bg);border-radius:var(--rs);margin-bottom:14px">
+        <div style="display:flex;gap:8px;margin-bottom:6px"><span>✓</span><span>No vendemos tus datos a nadie</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:6px"><span>✓</span><span>No los compartimos con terceros</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:6px"><span>✓</span><span>No los usamos para publicidad</span></div>
+        <div style="display:flex;gap:8px"><span>✓</span><span>Solo vos podés ver tus datos</span></div>
+      </div>
+      <div style="margin-bottom:14px"><strong>Seguridad</strong><br>
+      Tus datos viajan encriptados (HTTPS) y se guardan en servidores de Supabase, certificados con estándares internacionales de seguridad.</div>
+      <div style="margin-bottom:14px"><strong>Borrar tu cuenta</strong><br>
+      Si querés eliminar tu cuenta y todos tus datos, escribinos y lo hacemos en 48 horas.</div>
+      <div style="font-size:11px;color:var(--muted)">Última actualización: mayo 2026</div>
+    </div>
+    <div class="mf" style="margin-top:16px">
+      <button class="btn btn-pri btn-sm" onclick="cerrar('m-terminos')">Entendido</button>
     </div>
   </div>
 </div>
@@ -204,16 +238,18 @@ tr:last-child td{border-bottom:none}
     <nav class="nav">
       <div class="ni active" data-page="inicio"><span class="ni-ic">🏠</span>Inicio</div>
       <div class="ni" data-page="ingresos"><span class="ni-ic">💰</span>Ingresos</div>
-      <div class="ni" data-page="gastos"><span class="ni-ic">💸</span>Gastos Variables</div>
       <div class="ni" data-page="gastos-fijos"><span class="ni-ic">📌</span>Gastos Fijos</div>
+      <div class="ni" data-page="gastos"><span class="ni-ic">💸</span>Gastos Variables</div>
+      <div class="nav-sep"></div>
       <div class="ni" data-page="deudas"><span class="ni-ic">💳</span>Mis Deudas</div>
+      <div class="ni" data-page="estrategia"><span class="ni-ic">🗺</span>Estrategia Deudas</div>
+      <div class="nav-sep"></div>
       <div class="ni" data-page="metas"><span class="ni-ic">🎯</span>Metas de Ahorro</div>
       <div class="ni" data-page="inversiones"><span class="ni-ic">💹</span>Inversiones</div>
+      <div class="nav-sep"></div>
       <div class="ni" data-page="estadisticas"><span class="ni-ic">📈</span>Estadísticas</div>
       <div class="ni" data-page="educacion"><span class="ni-ic">🎓</span>Aprendé</div>
-      <div class="ni" data-page="proyeccion"><span class="ni-ic">📊</span>Proyección</div>
-      <div class="ni" data-page="estrategia"><span class="ni-ic">🗺</span>Estrategia Deudas</div>
-      <div class="nav-sep" id="nav-sep-compartido" style="display:none"></div>
+      <div class="nav-sep"></div>
       <div class="ni" data-page="grupos" id="nav-grupos"><span class="ni-ic">👥</span>Grupos</div>
     </nav>
     <div class="nav-tc" onclick="fetchTC()">
@@ -290,13 +326,14 @@ tr:last-child td{border-bottom:none}
   <!-- GASTOS -->
   <div class="page" id="page-gastos">
     <div class="tb">
-      <div><div class="pt">Gastos</div><div class="ps">Lo que salió este mes</div></div>
+      <div><div class="pt">Gastos Variables</div><div class="ps">Lo que salió este mes</div></div>
       <div class="tb-r">
         <div class="mnav">
           <button onclick="cambiarMes(-1)">←</button>
           <span id="gas-mes-lbl"></span>
           <button onclick="cambiarMes(1)">→</button>
         </div>
+        <button class="btn btn-sec btn-sm" onclick="abrirLimites()">🎯 Límites</button>
         <button class="btn btn-pri btn-sm" onclick="abrirModalGasto()">+ Agregar</button>
       </div>
     </div>
@@ -481,7 +518,7 @@ tr:last-child td{border-bottom:none}
   <div class="page" id="page-grupo-detalle">
     <div class="tb">
       <div>
-        <button onclick="render('grupos')" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);font-family:var(--sans);padding:0;margin-bottom:4px">← Grupos</button>
+        <button onclick="volverAGrupos()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);font-family:var(--sans);padding:0;margin-bottom:4px">← Grupos</button>
         <div class="pt" id="gd-titulo">Grupo</div>
         <div class="ps" id="gd-codigo"></div>
       </div>
@@ -543,7 +580,18 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- MODAL GASTO GRUPO -->
+  <!-- MODAL DETALLE GASTO GRUPO -->
+  <div class="ov" id="m-detalle-gasto-grupo">
+    <div class="modal" style="max-width:400px">
+      <div class="mt" id="dgg-titulo">Detalle del gasto</div>
+      <div id="dgg-contenido"></div>
+      <div class="mf" style="margin-top:16px">
+        <button class="btn btn-sec btn-sm" onclick="cerrar('m-detalle-gasto-grupo')">Cerrar</button>
+        <button class="btn btn-sec btn-sm" id="dgg-editar-btn" style="display:none" onclick="dggEditar()">✏️ Editar</button>
+        <button class="btn btn-sec btn-sm" id="dgg-borrar-btn" style="display:none;color:var(--red)" onclick="dggBorrar()">🗑 Borrar</button>
+      </div>
+    </div>
+  </div>
   <div class="ov" id="m-gasto-grupo">
     <div class="modal">
       <div class="mt">Agregar gasto al grupo</div>
@@ -712,6 +760,19 @@ tr:last-child td{border-bottom:none}
     <div class="mf">
       <button class="btn btn-sec btn-sm" onclick="cerrar('m-rapido')">Cancelar</button>
       <button class="btn btn-pri btn-sm" onclick="guardarRapido()">Guardar gasto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LÍMITES -->
+<div class="ov" id="m-limites">
+  <div class="modal" style="max-width:400px">
+    <div class="mt">🎯 Límites por categoría</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Opcionales. Si superás el límite Clara te avisa. Dejá en 0 para sin límite.</div>
+    <div id="limites-lista"></div>
+    <div class="mf">
+      <button class="btn btn-sec btn-sm" onclick="cerrar('m-limites')">Cerrar</button>
+      <button class="btn btn-pri btn-sm" onclick="guardarLimites()">Guardar</button>
     </div>
   </div>
 </div>
@@ -921,6 +982,20 @@ tr:last-child td{border-bottom:none}
       <div class="fg"><label>Email de tu pareja <span style="font-size:10px;color:var(--muted)">(para invitar — próximamente)</span></label><input id="p-pareja-email" type="email" placeholder="email@ejemplo.com" disabled style="opacity:.5"></div>
     </div>
     <div class="fg"><label>Email</label><input id="p-email" type="email" disabled style="opacity:.5;background:var(--bg)"></div>
+    <div style="border-top:1px solid var(--border);margin:14px 0;padding-top:14px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Acciones</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="pedirPermiso()" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
+          🔔 Activar recordatorios semanales
+        </button>
+        <button onclick="exportarCSV()" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
+          📥 Exportar gastos del mes (CSV)
+        </button>
+        <button onclick="verTerminos(event)" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
+          🔒 Política de privacidad
+        </button>
+      </div>
+    </div>
     <div class="mf"><button class="btn btn-sec btn-sm" onclick="cerrar('m-perfil')">Cancelar</button><button class="btn btn-pri btn-sm" onclick="guardarPerfil()">Guardar</button></div>
   </div>
 </div>
@@ -951,9 +1026,15 @@ function switchTab(t){
   $('reg-tab').style.background=t==='reg'?'var(--white)':'none';
   $('reg-tab').style.color=t==='reg'?'var(--ink)':'var(--muted)';
   $('auth-nombre-wrap').style.display=t==='reg'?'':'none';
+  $('auth-terms-wrap').style.display=t==='reg'?'':'none';
   $('auth-btn').textContent=t==='login'?'Entrar':'Crear cuenta';
   $('auth-forgot').style.display=t==='login'?'':'none';
   $('auth-error').style.display='none';
+}
+
+function verTerminos(e){
+  e.preventDefault();
+  abrir('m-terminos');
 }
 
 async function doAuth(){
@@ -962,6 +1043,7 @@ async function doAuth(){
   const nombre=$('auth-nombre')?.value.trim();
   const btn=$('auth-btn');
   if(!email||!pass){showAuthError('Completá email y contraseña');return;}
+  if(authTab==='reg'&&!$('auth-terms').checked){showAuthError('Aceptá los términos para continuar');return;}
   btn.textContent='...';btn.disabled=true;
   try{
     let res;
@@ -1013,14 +1095,11 @@ async function dbLoad(){
       sb.from('inversiones').select('*').eq('user_id',uid),
       sb.from('perfiles').select('*').eq('id',uid).single(),
     ]);
-    S.ingresos=(ing.data||[]).map(r=>({...r,descripcion:r.descripcion,reserva:r.reserva}));
-    S.gastos=(gas.data||[]).map(r=>({...r}));
-    S.deudas=(deu.data||[]).map(d=>{
-      const pagos=(d.pagos_deuda||[]);
-      return{...d,cuota_mensual:d.cuota_mensual||0,pagos:pagos,historial_pagos:pagos};
-    });
-    S.metas=met.data||[];
-    S.inversiones=inv.data||[];
+    S.ingresos=(ing.data&&ing.data.length>0)?ing.data.map(r=>({...r})):S.ingresos;
+    S.gastos=(gas.data&&gas.data.length>0)?gas.data.map(r=>({...r})):S.gastos;
+    S.deudas=(deu.data||[]).map(d=>({...d,cuota_mensual:d.cuota_mensual||0,pagos:[]}));
+    S.metas=(met.data&&met.data.length>0)?met.data:S.metas;
+    S.inversiones=(inv.data&&inv.data.length>0)?inv.data:S.inversiones;
     if(perf.data){
       Object.assign(PERFIL,{
         nombre:perf.data.nombre||'',
@@ -1156,6 +1235,7 @@ async function initApp(){
       $('login-screen').style.display='none';
       $('app-screen').style.display='flex';
       fetchTC();render('inicio');
+      if(localStorage.getItem('clara_notif')==='1')programarRecordatorio();
     }else if(event==='SIGNED_OUT'){
       $('app-screen').style.display='none';
       $('login-screen').style.display='flex';
@@ -1193,6 +1273,7 @@ document.querySelectorAll('.ni').forEach(n=>n.addEventListener('click',()=>{
   n.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   PAGINA=n.dataset.page;
+  if(PAGINA==='grupos')GRUPOS_CACHE=[];
   $('page-'+PAGINA).classList.add('on');
   render(PAGINA);
 }));
@@ -1301,6 +1382,17 @@ function renderAlertasCategorias(){
     } else if(totalAct>0){
       const p=Math.round(monto/totalAct*100);
       if(p>=40)alertas.push({t:'red',msg:`${CATS[cat]||'📦'} <strong>${cat}</strong> es el ${p}% de tus gastos`,sub:fmt(monto)+' de '+fmt(totalAct)});
+    }
+  });
+
+  // Límites por categoría
+  const limites=getLimites();
+  Object.entries(limites).forEach(([cat,limite])=>{
+    const gasto=porCatAct[cat]||0;
+    if(gasto>0&&limite>0){
+      const pct=Math.round(gasto/limite*100);
+      if(pct>=100)alertas.push({t:'red',msg:`🚨 <strong>${cat}</strong> superó el límite del mes`,sub:`Gastaste ${fmt(gasto)} de ${fmt(limite)} (${pct}%)`});
+      else if(pct>=80)alertas.push({t:'orange',msg:`⚠ <strong>${cat}</strong> está al ${pct}% del límite`,sub:`${fmt(gasto)} de ${fmt(limite)} — te quedan ${fmt(limite-gasto)}`});
     }
   });
 
@@ -1462,11 +1554,17 @@ function renderGastos(){
   const porCat={};todos.forEach(g=>{porCat[g.cat]=(porCat[g.cat]||0)+g.monto;});
   const maxC=Math.max(...Object.values(porCat),1);const cats=Object.keys(porCat);
   $('gas-filtro-cat').innerHTML='<option value="">Todas</option>'+cats.map(c=>`<option value="${c}"${c===filtro?' selected':''}>${c}</option>`).join('');
-  $('gas-cats-grid').innerHTML=Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([cat,monto])=>`
-    <div class="stat" style="cursor:pointer" onclick="document.getElementById('gas-filtro-cat').value='${cat}';renderGastos()">
-      <div class="sl">${CATS[cat]||'📦'} ${cat}</div><div class="sv red">${fmt(monto)}</div>
-      <div class="pb" style="margin-top:6px"><div class="pf" style="width:${Math.round(monto/maxC*100)}%;background:var(--red)"></div></div>
-    </div>`).join('');
+  const limitesCat=getLimites();
+  $('gas-cats-grid').innerHTML=Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([cat,monto])=>{
+    const limite=limitesCat[cat]||0;
+    const limitePct=limite>0?Math.min(100,Math.round(monto/limite*100)):0;
+    const sobreLimite=limite>0&&monto>limite;
+    return`<div class="stat" style="cursor:pointer" onclick="document.getElementById('gas-filtro-cat').value='${cat}';renderGastos()">
+      <div class="sl">${CATS[cat]||'📦'} ${cat}</div>
+      <div class="sv ${sobreLimite?'red':''} ">${fmt(monto)}${sobreLimite?` <span style="font-size:10px">⚠</span>`:''}</div>
+      ${limite>0?`<div style="font-size:10px;color:var(--muted)">${limitePct}% de ${fmt(limite)}</div><div class="pb" style="margin-top:4px"><div class="pf" style="width:${limitePct}%;background:${sobreLimite?'var(--red)':'var(--green)'}"></div></div>`:'<div class="pb" style="margin-top:4px"><div class="pf" style="width:${Math.round(monto/maxC*100)}%;background:var(--red)"></div></div>'}
+    </div>`;
+  }).join('');
   const fil=filtro?todos.filter(g=>g.cat===filtro):todos;
   $('gas-tbody').innerHTML=fil.length?fil.map(g=>`<tr>
     <td><div>${g.descripcion}</div>${g.moneda==='USD'?`<div style="font-size:10px;color:var(--muted)">USD ${(g.monto_original||0).toLocaleString('es-AR')}</div>`:''}</td>
@@ -3311,6 +3409,17 @@ let GRUPO_ACTUAL=null;
 let GRUPOS_CACHE=[];
 let MIEMBROS_CACHE={};
 
+function volverAGrupos(){
+  GRUPO_ACTUAL=null;
+  PAGINA='grupos';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  $('page-grupos')?.classList.add('on');
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  $('nav-grupos')?.classList.add('active');
+  GRUPOS_CACHE=[];// Force reload
+  renderGrupos();
+}
+
 async function renderGrupos(){
   const el=$('grupos-lista');if(!el)return;
   el.innerHTML='<div class="loading">Cargando grupos...</div>';
@@ -3433,20 +3542,15 @@ async function renderGrupoDetalle(){
       const pagadorNombre=nombrePorId[gasto.pagado_por]||'?';
       const div=gasto.division||{};
       const miParte=div[CURRENT_USER.id]||0;
-      const divTexto=Object.entries(div).map(([uid,m])=>`${nombrePorId[uid]||'?'}: ${fmt(parseFloat(m))}`).join(' · ');
-      return`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div style="flex:1;cursor:pointer" onclick="verDetalleGasto(${gasto.id})">
-            <div style="font-size:13px;font-weight:500">${gasto.descripcion}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${gasto.fecha} · Pagó: ${pagadorNombre}</div>
-            ${miParte>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">Tu parte: ${fmt(miParte)}</div>`:''}
-            <div style="font-size:10.5px;color:var(--muted);margin-top:2px">División: ${divTexto}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
-            <div style="font-family:var(--mono);font-size:13px">${fmt(gasto.monto)}</div>
-            ${gasto.pagado_por===CURRENT_USER.id?`<button onclick="editarGastoGrupo(${JSON.stringify(gasto).replace(/"/g,'&quot;')})" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px">✏️</button>
-            <button onclick="eliminarGastoGrupo(${gasto.id})" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px">🗑</button>`:''}
-          </div>
+      return`<div onclick="abrirDetalleGasto(${gasto.id})" style="padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:500">${gasto.descripcion}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${gasto.fecha} · Pagó: ${pagadorNombre}</div>
+          ${miParte>0?`<div style="font-size:11px;color:var(--blue);margin-top:2px">Tu parte: ${fmt(miParte)}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:13px">${fmt(gasto.monto)}</span>
+          <span style="color:var(--muted);font-size:12px">›</span>
         </div>
       </div>`;
     }).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Sin gastos todavía. ¡Agregá el primero!</div>';
@@ -3622,9 +3726,61 @@ function editarGastoGrupo(gasto){
   abrir('m-gasto-grupo');
 }
 
-function verDetalleGasto(id){
-  // Already visible inline — just scroll to it
+let DGG_GASTO_ACTUAL=null;
+
+function abrirDetalleGasto(id){
+  // Find gasto in last loaded data — re-query if needed
+  const miembros=MIEMBROS_CACHE[GRUPO_ACTUAL?.id]||[];
+  const nombrePorId={};miembros.forEach(m=>{nombrePorId[m.user_id]=m.nombre_display||'Usuario';});
+
+  // Get from DOM data or re-fetch
+  sb.from('gastos_grupo').select('*').eq('id',id).single().then(({data:gasto})=>{
+    if(!gasto)return;
+    DGG_GASTO_ACTUAL=gasto;
+    const div=gasto.division||{};
+    const esMio=gasto.pagado_por===CURRENT_USER.id;
+
+    $('dgg-titulo').textContent=gasto.descripcion;
+    $('dgg-contenido').innerHTML=`
+      <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:28px;font-family:var(--serif);font-weight:600">${fmt(gasto.monto)}</div>
+        <div style="text-align:right;font-size:12px;color:var(--muted)">${gasto.fecha}<br>${CATS[gasto.cat]||'📦'} ${gasto.cat}</div>
+      </div>
+      <div style="padding:10px 12px;background:var(--bg);border-radius:var(--rs);margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">PAGÓ</div>
+        <div style="font-size:13px;font-weight:500">${nombrePorId[gasto.pagado_por]||'?'}${gasto.pagado_por===CURRENT_USER.id?' (vos)':''}</div>
+      </div>
+      <div style="padding:10px 12px;background:var(--bg);border-radius:var(--rs)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">DIVISIÓN</div>
+        ${Object.entries(div).map(([uid,monto])=>{
+          const nombre=nombrePorId[uid]||'?';
+          const esYo=uid===CURRENT_USER.id;
+          return`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span>${nombre}${esYo?' <span style="font-size:10.5px;color:var(--muted)">(vos)</span>':''}</span>
+            <span style="font-family:var(--mono);${esYo?'color:var(--blue);font-weight:600':''}">${fmt(parseFloat(monto))}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+    $('dgg-editar-btn').style.display=esMio?'':'none';
+    $('dgg-borrar-btn').style.display=esMio?'':'none';
+    abrir('m-detalle-gasto-grupo');
+  });
 }
+
+function dggEditar(){
+  cerrar('m-detalle-gasto-grupo');
+  if(DGG_GASTO_ACTUAL)editarGastoGrupo(DGG_GASTO_ACTUAL);
+}
+
+function dggBorrar(){
+  cerrar('m-detalle-gasto-grupo');
+  if(DGG_GASTO_ACTUAL)eliminarGastoGrupo(DGG_GASTO_ACTUAL.id);
+}
+
+function verDetalleGasto(id){abrirDetalleGasto(id);}
+
+
 
 async function guardarGastoGrupo(){
   const desc=$('gg-desc').value.trim();
@@ -3669,6 +3825,87 @@ function toast(msg){
   t.textContent=msg;
   t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;font-family:var(--sans);white-space:nowrap';
   document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
+}
+
+// ── LÍMITES POR CATEGORÍA ───────────────────────────
+const LIMITES_KEY='clara_limites';
+function getLimites(){try{return JSON.parse(localStorage.getItem(LIMITES_KEY)||'{}')}catch(e){return{};}}
+function saveLimites(d){localStorage.setItem(LIMITES_KEY,JSON.stringify(d));}
+
+function abrirLimites(){
+  const limites=getLimites();
+  const cats=['Comida','Casa','Transporte','Auto','Salud','Educación','Entretenimiento','Ropa','Servicios','Delivery','Suscripciones','Otros'];
+  $('limites-lista').innerHTML=cats.map(cat=>`
+    <div class="f2" style="align-items:center;margin-bottom:8px">
+      <label style="font-size:13px">${CATS[cat]||'📦'} ${cat}</label>
+      <input type="number" data-cat="${cat}" value="${limites[cat]||''}" placeholder="Sin límite"
+        style="text-align:right;font-family:var(--mono);padding:6px 8px;border:1px solid var(--border);border-radius:var(--rs);width:100%">
+    </div>`).join('');
+  abrir('m-limites');
+}
+
+function guardarLimites(){
+  const limites={};
+  document.querySelectorAll('#limites-lista input[data-cat]').forEach(inp=>{
+    const v=parseFloat(inp.value)||0;
+    if(v>0)limites[inp.dataset.cat]=v;
+  });
+  saveLimites(limites);cerrar('m-limites');
+  toast('Límites guardados ✓');renderGastos();
+}
+
+// ── EXPORTAR DATOS ───────────────────────────────────
+function exportarCSV(){
+  const now=new Date();
+  const mk=mesKey(now.getMonth(),now.getFullYear());
+  const filas=[['Tipo','Fecha','Descripción','Categoría','Cuenta','Monto','Moneda']];
+  S.ingresos.filter(i=>i.mes===mk).forEach(i=>{
+    filas.push(['Ingreso',i.fecha,i.descripcion||'','-',i.cuenta||'yo',i.monto,'ARS']);
+  });
+  S.gastos.filter(g=>g.mes===mk).forEach(g=>{
+    filas.push(['Gasto',g.fecha,g.descripcion||'',g.cat||'',g.cuenta||'yo',g.monto,g.moneda||'ARS']);
+  });
+  const csv=filas.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`clara_${mk}.csv`;a.click();
+  URL.revokeObjectURL(url);
+  toast('Exportado ✓');
+}
+
+// ── NOTIFICACIONES ───────────────────────────────────
+async function pedirPermiso(){
+  if(!('Notification' in window)){toast('Tu navegador no soporta notificaciones');return;}
+  const perm=await Notification.requestPermission();
+  if(perm==='granted'){
+    localStorage.setItem('clara_notif','1');
+    new Notification('Clara 💚',{body:'Te vamos a recordar cargar tus gastos semanalmente.',icon:'/clara/icons/icon-192.png'});
+    toast('Notificaciones activadas ✓');
+    programarRecordatorio();
+  }else{
+    toast('Permiso de notificaciones denegado');
+  }
+}
+
+function programarRecordatorio(){
+  // Check every time app loads if we should show a reminder
+  if(localStorage.getItem('clara_notif')!=='1')return;
+  const ultimaNotif=parseInt(localStorage.getItem('clara_ultima_notif')||'0');
+  const ahora=Date.now();
+  const semana=7*24*60*60*1000;
+  if(ahora-ultimaNotif>semana){
+    localStorage.setItem('clara_ultima_notif',String(ahora));
+    const now=new Date();
+    const mk=mesKey(now.getMonth(),now.getFullYear());
+    const gastosMes=S.gastos.filter(g=>g.mes===mk).length;
+    if(gastosMes<5&&Notification.permission==='granted'){
+      new Notification('Clara 💚',{
+        body:`¿Cargaste tus gastos esta semana? Tenés ${gastosMes} gastos este mes.`,
+        icon:'/clara/icons/icon-192.png'
+      });
+    }
+  }
 }
 
 // ── GASTOS PAGE ─────────────────────────────────────
