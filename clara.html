@@ -1109,7 +1109,9 @@ function showAuthError(msg){
 async function resetPassword(){
   const email=$('auth-email').value.trim();
   if(!email){showAuthError('Ingresá tu email primero');return;}
-  await sb.auth.resetPasswordForEmail(email);
+  await sb.auth.resetPasswordForEmail(email,{
+    redirectTo:'https://aguilarteandreina0927-collab.github.io/clara/clara.html'
+  });
   showAuthError('✓ Te mandamos un email para recuperar la contraseña');
 }
 
