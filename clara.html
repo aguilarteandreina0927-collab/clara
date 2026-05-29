@@ -83,7 +83,7 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)
 td{padding:9px 10px;font-size:12.5px;border-bottom:1px solid var(--border)}
 tr:last-child td{border-bottom:none}
 .num{text-align:right;font-family:var(--mono)}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;display:none;align-items:center;justify-content:center}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:500;display:none;align-items:center;justify-content:center}
 .ov.open{display:flex}
 .modal{background:var(--white);border-radius:16px;padding:24px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
 .mt{font-family:var(--serif);font-size:18px;margin-bottom:4px}
@@ -276,7 +276,7 @@ tr:last-child td{border-bottom:none}
 
   <main class="main">
   <!-- PERFIL MÓVIL — esquina superior derecha -->
-  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:8px;right:10px;z-index:49">
+  <div id="mobile-perfil-btn" style="display:none;position:fixed;top:8px;right:10px;z-index:200">
     <button onclick="abrirPerfil()" style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)">👤</button>
   </div>
 
@@ -997,8 +997,8 @@ tr:last-child td{border-bottom:none}
     <div style="border-top:1px solid var(--border);margin:14px 0;padding-top:14px">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Acciones</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="pedirPermiso()" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
-          🔔 Activar recordatorios semanales
+        <button onclick="toggleNotificaciones()" id="btn-notif" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
+          🔔 <span id="notif-label">Activar recordatorios semanales</span>
         </button>
         <button onclick="exportarCSV()" style="padding:9px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left">
           📥 Exportar gastos del mes (CSV)
@@ -1328,28 +1328,29 @@ async function fetchTC(){
 
 // ── NAVEGACIÓN ─────────────────────────────────────
 document.querySelectorAll('.ni').forEach(n=>n.addEventListener('click',()=>{
-  document.querySelectorAll('.ni').forEach(i=>i.classList.remove('active'));
-  n.classList.add('active');
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  PAGINA=n.dataset.page;
-  if(PAGINA==='grupos')GRUPOS_CACHE=[];
-  $('page-'+PAGINA).classList.add('on');
-  render(PAGINA);
+  render(n.dataset.page);
 }));
 
 function render(p){
+  PAGINA=p;
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('on'));
+  const pageEl=$('page-'+p);
+  if(pageEl)pageEl.classList.add('on');
+  document.querySelectorAll('.ni').forEach(n=>{
+    n.classList.remove('active');
+    if(n.dataset.page===p)n.classList.add('active');
+  });
   if(p==='inicio')renderInicio();
   else if(p==='ingresos')renderIngresos();
-  if(p==='gastos')renderGastosPage();
+  else if(p==='gastos')renderGastosPage();
   else if(p==='gastos-fijos')renderGastosFijos();
   else if(p==='deudas')renderDeudas();
   else if(p==='metas')renderMetas();
   else if(p==='inversiones')renderInversiones();
   else if(p==='estadisticas')renderEstadisticas();
-  else if(p==='grupos')renderGrupos();
+  else if(p==='grupos'){GRUPOS_CACHE=[];renderGrupos();}
   else if(p==='grupo-detalle')renderGrupoDetalle();
   else if(p==='educacion')renderEducacion();
-  else if(p==='proyeccion')renderProyeccion();
   else if(p==='estrategia')renderEstrategia();
 }
 
@@ -2178,6 +2179,7 @@ function abrirPerfil(){
     if($('p-pareja'))$('p-pareja').value=PERFIL.pareja_nombre||'';
     if($('p-email')&&CURRENT_USER)$('p-email').value=CURRENT_USER.email||'';
     mostrarOpcionesPareja();
+    actualizarLabelNotif();
     const modal=$('m-perfil');
     if(modal){modal.classList.add('open');}
     else{alert('Error: modal de perfil no encontrado');}
@@ -3489,9 +3491,9 @@ function volverAGrupos(){
 
 async function renderGrupos(){
   const el=$('grupos-lista');if(!el)return;
-  el.innerHTML='<div class="loading">Cargando grupos...</div>';
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Cargando grupos...</div>';
   try{
-    // Grupos donde soy miembro
+    // Parallel: get memberships and then groups
     const{data:misGrupos}=await sb.from('miembros_grupo').select('grupo_id').eq('user_id',CURRENT_USER.id);
     const ids=(misGrupos||[]).map(m=>m.grupo_id);
     if(!ids.length){
@@ -3508,8 +3510,6 @@ async function renderGrupos(){
     }
     const{data:grupos}=await sb.from('grupos').select('*').in('id',ids).eq('activo',true);
     GRUPOS_CACHE=grupos||[];
-
-    // Para cada grupo calcular balance rápido
     el.innerHTML=`
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn btn-sec btn-sm" onclick="abrirModalUnirseGrupo()">🔑 Tengo un código</button>
@@ -3522,21 +3522,16 @@ async function renderGrupos(){
               <div style="font-size:14px;font-weight:500">${g.nombre}</div>
               <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Código: ${g.codigo}</div>
             </div>
-            <div style="font-size:18px;color:var(--muted)">→</div>
+            <div style="font-size:18px;color:var(--muted)">›</div>
           </div>
         </div>`).join('')}`;
-  }catch(e){el.innerHTML='<div class="loading">Error cargando grupos</div>';console.error(e);}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">Error cargando grupos. Revisá tu conexión.</div>';console.error(e);}
 }
+
 
 async function abrirGrupo(id){
   GRUPO_ACTUAL=GRUPOS_CACHE.find(g=>g.id===id)||{id};
-  // Show detalle page
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  $('page-grupo-detalle')?.classList.add('on');
-  PAGINA='grupo-detalle';
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
-  $('nav-grupos')?.classList.add('active');
-  renderGrupoDetalle();
+  render('grupo-detalle');
 }
 
 async function renderGrupoDetalle(){
@@ -3544,19 +3539,17 @@ async function renderGrupoDetalle(){
   const g=GRUPO_ACTUAL;
   if($('gd-titulo'))$('gd-titulo').textContent=`${g.emoji||'👥'} ${g.nombre}`;
   if($('gd-codigo'))$('gd-codigo').textContent=`Código: ${g.codigo} · Tocá Invitar para compartirlo`;
+  if($('gd-balance'))$('gd-balance').innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Cargando...</div>';
 
   try{
-    // Cargar miembros
-    const{data:miembros}=await sb.from('miembros_grupo').select('*').eq('grupo_id',g.id);
+    // Fetch miembros and gastos in parallel
+    const[{data:miembros},{data:gastos}]=await Promise.all([
+      sb.from('miembros_grupo').select('*').eq('grupo_id',g.id),
+      sb.from('gastos_grupo').select('*').eq('grupo_id',g.id).order('fecha',{ascending:false})
+    ]);
     MIEMBROS_CACHE[g.id]=miembros||[];
-
-    // Usar nombre_display directamente de miembros_grupo
-    const nombrePorId={};
-    (miembros||[]).forEach(m=>{nombrePorId[m.user_id]=m.nombre_display||'Usuario';});
-
+    const nombrePorId={};(miembros||[]).forEach(m=>{nombrePorId[m.user_id]=m.nombre_display||'Usuario';});
     const uids=(miembros||[]).map(m=>m.user_id);
-
-    // Render miembros
     $('gd-miembros').innerHTML=(miembros||[]).map(m=>`
       <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-family:var(--serif)">${(nombrePorId[m.user_id]||'?')[0].toUpperCase()}</div>
@@ -3566,8 +3559,7 @@ async function renderGrupoDetalle(){
         </div>
       </div>`).join('');
 
-    // Cargar gastos
-    const{data:gastos}=await sb.from('gastos_grupo').select('*').eq('grupo_id',g.id).order('fecha',{ascending:false});
+    // Calcular balance
 
     // Calcular balance
     const balances={};
@@ -3942,6 +3934,26 @@ function exportarCSV(){
 }
 
 // ── NOTIFICACIONES ───────────────────────────────────
+async function toggleNotificaciones(){
+  const activas=localStorage.getItem('clara_notif')==='1';
+  if(activas){
+    localStorage.removeItem('clara_notif');
+    localStorage.removeItem('clara_ultima_notif');
+    toast('Recordatorios desactivados');
+    actualizarLabelNotif();
+  }else{
+    await pedirPermiso();
+  }
+}
+
+function actualizarLabelNotif(){
+  const lbl=$('notif-label');if(!lbl)return;
+  const activas=localStorage.getItem('clara_notif')==='1'&&Notification.permission==='granted';
+  lbl.textContent=activas?'✓ Recordatorios activados — tocar para desactivar':'Activar recordatorios semanales';
+  const btn=$('btn-notif');
+  if(btn)btn.style.background=activas?'var(--green-bg)':'var(--bg)';
+}
+
 async function pedirPermiso(){
   if(!('Notification' in window)){toast('Tu navegador no soporta notificaciones');return;}
   const perm=await Notification.requestPermission();
@@ -3949,6 +3961,7 @@ async function pedirPermiso(){
     localStorage.setItem('clara_notif','1');
     new Notification('Clara 💚',{body:'Te vamos a recordar cargar tus gastos semanalmente.',icon:'/clara/icons/icon-192.png'});
     toast('Notificaciones activadas ✓');
+    actualizarLabelNotif();
     programarRecordatorio();
   }else{
     toast('Permiso de notificaciones denegado');
