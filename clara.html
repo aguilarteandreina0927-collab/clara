@@ -200,6 +200,18 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- MODAL NUEVA CONTRASEÑA -->
+<div class="ov" id="m-nueva-pass" style="z-index:10001">
+  <div class="modal" style="max-width:360px">
+    <div class="mt">Nueva contraseña</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Ingresá tu nueva contraseña para Clara.</div>
+    <div class="fg"><label>Nueva contraseña</label><input id="np-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
+    <div class="fg"><label>Confirmar contraseña</label><input id="np-pass2" type="password" placeholder="Repetí la contraseña"></div>
+    <div id="np-error" style="font-size:12px;color:var(--red);margin-bottom:8px;display:none"></div>
+    <button onclick="confirmarNuevaPass()" style="width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer">Guardar contraseña</button>
+  </div>
+</div>
+
 <!-- MODAL TÉRMINOS -->
 <div class="ov" id="m-terminos" style="z-index:10000">
   <div class="modal" style="max-width:460px;max-height:85vh;overflow-y:auto">
@@ -1032,8 +1044,36 @@ function switchTab(t){
   $('auth-error').style.display='none';
 }
 
+async function mostrarFormNuevaContrasena(accessToken){
+  // Set the session with the recovery token
+  const{data,error}=await sb.auth.setSession({access_token:accessToken,refresh_token:''});
+  $('login-screen').style.display='none';
+  $('app-screen').style.display='none';
+  abrir('m-nueva-pass');
+}
+
+async function confirmarNuevaPass(){
+  const pass=$('np-pass').value;
+  const pass2=$('np-pass2').value;
+  const errEl=$('np-error');
+  if(!pass||pass.length<6){errEl.textContent='La contraseña debe tener al menos 6 caracteres';errEl.style.display='';return;}
+  if(pass!==pass2){errEl.textContent='Las contraseñas no coinciden';errEl.style.display='';return;}
+  errEl.style.display='none';
+  const{error}=await sb.auth.updateUser({password:pass});
+  if(error){errEl.textContent='Error: '+error.message;errEl.style.display='';return;}
+  cerrar('m-nueva-pass');
+  // Clear hash from URL
+  history.replaceState(null,'',window.location.pathname);
+  toast('✓ Contraseña actualizada. Ingresá con tu nueva contraseña.');
+  setTimeout(()=>{
+    $('login-screen').style.display='flex';
+    $('app-screen').style.display='none';
+  },2000);
+}
+
+
 function verTerminos(e){
-  e.preventDefault();
+  if(e)e.preventDefault();
   abrir('m-terminos');
 }
 
@@ -1214,6 +1254,16 @@ async function sbInsertSalde(data){
 
 // ── APP INIT ────────────────────────────────────────
 async function initApp(){
+  // Check for recovery token in URL hash
+  const hash=window.location.hash;
+  if(hash.includes('type=recovery')){
+    const params=new URLSearchParams(hash.slice(1));
+    const accessToken=params.get('access_token');
+    if(accessToken){
+      mostrarFormNuevaContrasena(accessToken);
+      return;
+    }
+  }
   // Check existing session
   const{data:{session}}=await sb.auth.getSession();
   if(session){
